@@ -26,7 +26,7 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 Gio._promisify(Gio.DBusProxy, 'new_for_bus');
 Gio._promisify(Gio.DBusProxy.prototype, 'call');
 
-const IDLE_TIME = 60 * 1000; // 1min
+const IDLE_TIME = 10 * 60 * 1000; // 10min
 
 export default class IdleHamsterExtension extends Extension {
     async enable() {
