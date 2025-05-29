@@ -1,0 +1,8 @@
+{
+  "name": "Idle Hamster",
+  "description": "Stop tracking hamster activity's when idle",
+  "uuid": "idle-hamster@johnnyg.github.io",
+  "shell-version": [
+    "48"
+  ]
+}
