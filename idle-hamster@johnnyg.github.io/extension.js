@@ -26,7 +26,7 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 Gio._promisify(Gio.DBusProxy, 'new_for_bus');
 Gio._promisify(Gio.DBusProxy.prototype, 'call');
 
-const IDLE_TIME = 10 * 60 * 1000; // 10min
+const IDLE_DELAY_OFFSET = 1; // 1min
 
 export default class IdleHamsterExtension extends Extension {
     async enable() {
@@ -52,18 +52,34 @@ export default class IdleHamsterExtension extends Extension {
             // Workaround for https://github.com/projecthamster/hamster/issues/775
             const endTime = lastActiveTime - (new Date().getTimezoneOffset() * 60);
             await this._hamsterProxy.call('StopTracking', new GLib.Variant('(i)', [endTime]), Gio.DBusCallFlags.NONE, -1, null);
-            Main.notify(_("Hamster tracking was stopped due to being idle"));
           }
         });
-        const watch_id = (await this._idleMonitorProxy.call('AddIdleWatch', new GLib.Variant('(t)', [IDLE_TIME]), Gio.DBusCallFlags.NONE, -1, null)).deepUnpack();
-        console.log(`watch ID: ${watch_id}`);
-        this._watch_id = watch_id
+        this._settings = Gio.Settings.new("org.gnome.desktop.session");
+        const idleDelay = settings.get_uint("idle-delay");
+        this.updateIdleWatch(idleDelay + IDLE_DELAY_OFFSET);
+        settings.connect('changed::idle-delay', (settings, key) => {
+          const idleDelay = settings.get_uint("idle-delay");
+          this.updateIdleWatch(idleDelay + IDLE_DELAY_OFFSET);
+        });
     }
 
     async disable() {
-        this._indicator.destroy();
-        this._indicator = null;
-        await this._idleMonitorProxy.call('RemoveIdleWatch', new GLib.Variant('(u)', [this._watch_id]), Gio.DBusCallFlags.NONE, -1, null);
-        this._watch_id = null;
+        await this.removeIdleWatch();
+    }
+
+    async removeIdleWatch() {
+        if (this._watch_id != null) {
+          await this._idleMonitorProxy.call('RemoveIdleWatch', new GLib.Variant('(u)', [this._watch_id]), Gio.DBusCallFlags.NONE, -1, null);
+          this._watch_id = null;
+        }
+    }
+
+    async updateIdleWatch(idleTimeMin) {
+        console.log(`Add idle watch for ${idleTimeMin} minute(s)`);
+        await this.removeIdleWatch();
+        const idleTimeMs = idleTimeMin * 60 * 1000;
+        const watch_id = (await this._idleMonitorProxy.call('AddIdleWatch', new GLib.Variant('(t)', [idleTimeMs]), Gio.DBusCallFlags.NONE, -1, null)).deepUnpack();
+        console.log(`watch ID: ${watch_id}`);
+        this._watch_id = watch_id;
     }
 }
