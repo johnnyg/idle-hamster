@@ -52,22 +52,25 @@ export default class IdleHamsterExtension extends Extension {
         await this._hamsterProxy.call('StopTracking', new GLib.Variant('(i)', [endTime]), Gio.DBusCallFlags.NONE, -1, null);
       }
     });
-    this._settings = Gio.Settings.new("org.gnome.desktop.session");
-    const idleDelay = settings.get_uint("idle-delay");
-    this.updateIdleWatch(idleDelay + IDLE_DELAY_OFFSET);
-    settings.connect('changed::idle-delay', (settings, key) => {
-      const idleDelay = settings.get_uint("idle-delay");
-      this.updateIdleWatch(idleDelay + IDLE_DELAY_OFFSET);
+    this._settings = this.getSettings("org.gnome.desktop.session");
+    this._settings.connect('changed::idle-delay', async (settings, key) => {
+      const idleDelaySec = settings.get_uint(key);
+      await this.updateIdleWatch(idleDelaySec / 60 + IDLE_DELAY_OFFSET);
     });
+    const idleDelaySec = this._settings.get_uint("idle-delay");
+    await this.updateIdleWatch(idleDelaySec / 60 + IDLE_DELAY_OFFSET);
   }
 
   async disable() {
     await this.removeIdleWatch();
+    this.settings = null;
+    this._idleMonitorProxy = null;
+    this._hamsterProxy = null;
   }
 
   async removeIdleWatch() {
     if (this._watch_id != null) {
-      await this._idleMonitorProxy.call('RemoveIdleWatch', new GLib.Variant('(u)', [this._watch_id]), Gio.DBusCallFlags.NONE, -1, null);
+      await this._idleMonitorProxy.call('RemoveWatch', new GLib.Variant('(u)', [this._watch_id]), Gio.DBusCallFlags.NONE, -1, null);
       this._watch_id = null;
     }
   }
