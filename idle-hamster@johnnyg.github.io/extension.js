@@ -42,28 +42,34 @@ export default class IdleHamsterExtension extends Extension {
       '/org/gnome/Mutter/IdleMonitor/Core',
       'org.gnome.Mutter.IdleMonitor',
       null);
-    this._idleMonitorProxy.connect('g-signal', async (_proxy, senderName, signalName, parameters) => {
-      if (signalName === 'WatchFired') {
-        const [idleTime] = (await this._idleMonitorProxy.call('GetIdletime', null, Gio.DBusCallFlags.NONE, -1, null)).deepUnpack();
-        console.log(`idle time: ${idleTime}`);
-        const lastActiveTime = Math.floor((Date.now() - idleTime) / 1000);
-        // Workaround for https://github.com/projecthamster/hamster/issues/775
-        const endTime = lastActiveTime - (new Date().getTimezoneOffset() * 60);
-        await this._hamsterProxy.call('StopTracking', new GLib.Variant('(i)', [endTime]), Gio.DBusCallFlags.NONE, -1, null);
-      }
+    this._watchFiredHandlerId = this._idleMonitorProxy.connect('g-signal::WatchFired', async (_proxy, senderName, signalName, parameters) => {
+      const [idleTime] = (await this._idleMonitorProxy.call('GetIdletime', null, Gio.DBusCallFlags.NONE, -1, null)).deepUnpack();
+      console.log(`idle time: ${idleTime}`);
+      const lastActiveTime = Math.floor((Date.now() - idleTime) / 1000);
+      // Workaround for https://github.com/projecthamster/hamster/issues/775
+      const endTime = lastActiveTime - (new Date().getTimezoneOffset() * 60);
+      await this._hamsterProxy.call('StopTracking', new GLib.Variant('(i)', [endTime]), Gio.DBusCallFlags.NONE, -1, null);
     });
-    this._settings = this.getSettings("org.gnome.desktop.session");
-    this._settings.connect('changed::idle-delay', async (settings, key) => {
+    this._settings = this.getSettings('org.gnome.desktop.session');
+    this._idleDelayHandlerId = this._settings.connect('changed::idle-delay', async (settings, key) => {
       const idleDelaySec = settings.get_uint(key);
       await this.updateIdleWatch(idleDelaySec / 60 + IDLE_DELAY_OFFSET);
     });
-    const idleDelaySec = this._settings.get_uint("idle-delay");
+    const idleDelaySec = this._settings.get_uint('idle-delay');
     await this.updateIdleWatch(idleDelaySec / 60 + IDLE_DELAY_OFFSET);
   }
 
   async disable() {
     await this.removeIdleWatch();
+    if (this._idleDelayHandlerId) {
+      this._settings.disconnect(this._idleDelayHandlerId);
+      this._idleDelayHandlerId = null;
+    }
     this.settings = null;
+    if (this._watchFiredHandlerId) {
+      this._idleMonitorProxy.disconnect(this._watchFiredHandlerId);
+      this._watchFiredHandlerId = null;
+    }
     this._idleMonitorProxy = null;
     this._hamsterProxy = null;
   }
