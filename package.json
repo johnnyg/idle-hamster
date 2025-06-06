@@ -1,0 +1,27 @@
+{
+  "name": "idle-hamster",
+  "version": "0.0.1",
+  "description": "Stop tracking hamster activity's when idle",
+  "type": "module",
+  "private": true,
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/johnnyg/idle-hamster.git"
+  },
+  "author": "John Garland <johnnybg@gmail.com>",
+  "license": "LGPL-3.0-or-later",
+  "bugs": {
+    "url": "https://github.com/johnnyg/idle-hamster/issues"
+  },
+  "homepage": "https://github.com/johnnyg/idle-hamster#readme",
+  "sideEffects": false,
+  "devDependencies": {
+    "eslint": "^9.28.0",
+    "eslint-plugin-jsdoc": "^50.7.1",
+    "typescript": "^5.8.3"
+  },
+  "dependencies": {
+    "@girs/gjs": "^4.0.0-beta.23",
+    "@girs/gnome-shell": "^48.0.2"
+  }
+}

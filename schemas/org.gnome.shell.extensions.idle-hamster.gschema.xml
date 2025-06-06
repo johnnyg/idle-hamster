@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<schemalist>
+  <schema id="org.gnome.shell.extensions.idle-hamster" path="/org/gnome/shell/extensions/idle-hamster/">
+    <key name="idle-delay" type="q">
+      <default>10</default>
+      <summary>Idle delay</summary>
+      <description>The duration in minutes before we are considered idle and should stop tracking tasks</description>
+    </key>
+    <key name="use-session-idle-delay" type="b">
+      <default>false</default>
+      <summary>Use session idle delay</summary>
+      <description>Whether to use the session's idle delay as our idle delay</description>
+    </key>
+  </schema>
+</schemalist>

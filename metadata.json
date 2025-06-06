@@ -1,0 +1,14 @@
+{
+  "uuid": "idle-hamster@johnnyg.github.io",
+  "name": "Idle Hamster",
+  "description": "Stop tracking hamster activity's when idle",
+  "session-modes": [
+    "user",
+    "unlock-dialog"
+  ],
+  "settings-schema": "org.gnome.shell.extensions.idle-hamster",
+  "url": "https://github.com/johnnyg/idle-hamster",
+  "shell-version": [
+    "48"
+  ]
+}
