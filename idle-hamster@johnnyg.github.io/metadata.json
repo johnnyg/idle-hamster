@@ -4,5 +4,9 @@
   "uuid": "idle-hamster@johnnyg.github.io",
   "shell-version": [
     "48"
+  ],
+  "session-modes": [
+    "user",
+    "unlock-dialog"
   ]
 }

@@ -24,10 +24,15 @@ import { Extension, gettext as _ } from 'resource:///org/gnome/shell/extensions/
 Gio._promisify(Gio.DBusProxy, 'new_for_bus');
 Gio._promisify(Gio.DBusProxy.prototype, 'call');
 
-const IDLE_DELAY_OFFSET = 1; // 1min
+const IDLE_DELAY_OFFSET_SEC = 12; // 10s to blank
+
+function toTimeString(sec) {
+  return `${Math.floor(sec / 60)} min ${Math.floor(sec % 60)} sec`
+}
 
 export default class IdleHamsterExtension extends Extension {
   async enable() {
+    console.log("idle hamster enable");
     this._hamsterProxy = await Gio.DBusProxy.new_for_bus(Gio.BusType.SESSION,
       Gio.DBusProxyFlags.NONE,
       null,
@@ -44,22 +49,27 @@ export default class IdleHamsterExtension extends Extension {
       null);
     this._watchFiredHandlerId = this._idleMonitorProxy.connect('g-signal::WatchFired', async (_proxy, senderName, signalName, parameters) => {
       const [idleTime] = (await this._idleMonitorProxy.call('GetIdletime', null, Gio.DBusCallFlags.NONE, -1, null)).deepUnpack();
-      console.log(`idle time: ${idleTime}`);
+      console.log(`idle time: ${toTimeString(idleTime / 1000)}`);
       const lastActiveTime = Math.floor((Date.now() - idleTime) / 1000);
       // Workaround for https://github.com/projecthamster/hamster/issues/775
       const endTime = lastActiveTime - (new Date().getTimezoneOffset() * 60);
-      await this._hamsterProxy.call('StopTracking', new GLib.Variant('(i)', [endTime]), Gio.DBusCallFlags.NONE, -1, null);
+      try {
+        await this._hamsterProxy.call('StopTracking', new GLib.Variant('(i)', [endTime]), Gio.DBusCallFlags.NONE, -1, null);
+      } catch (e) {
+        console.log(`error: ${e}`);
+      }
     });
     this._settings = this.getSettings('org.gnome.desktop.session');
     this._idleDelayHandlerId = this._settings.connect('changed::idle-delay', async (settings, key) => {
       const idleDelaySec = settings.get_uint(key);
-      await this.updateIdleWatch(idleDelaySec / 60 + IDLE_DELAY_OFFSET);
+      await this.updateIdleWatch(idleDelaySec + IDLE_DELAY_OFFSET_SEC);
     });
     const idleDelaySec = this._settings.get_uint('idle-delay');
-    await this.updateIdleWatch(idleDelaySec / 60 + IDLE_DELAY_OFFSET);
+    await this.updateIdleWatch(idleDelaySec + IDLE_DELAY_OFFSET_SEC);
   }
 
   async disable() {
+    console.log("idle hamster disable");
     await this.removeIdleWatch();
     if (this._idleDelayHandlerId) {
       this._settings.disconnect(this._idleDelayHandlerId);
@@ -81,10 +91,10 @@ export default class IdleHamsterExtension extends Extension {
     }
   }
 
-  async updateIdleWatch(idleTimeMin) {
-    console.log(`Add idle watch for ${idleTimeMin} minute(s)`);
+  async updateIdleWatch(idleTimeSec) {
+    console.log(`Add idle watch for ${toTimeString(idleTimeSec)}`);
     await this.removeIdleWatch();
-    const idleTimeMs = idleTimeMin * 60 * 1000;
+    const idleTimeMs = idleTimeSec * 1000;
     const watch_id = (await this._idleMonitorProxy.call('AddIdleWatch', new GLib.Variant('(t)', [idleTimeMs]), Gio.DBusCallFlags.NONE, -1, null)).deepUnpack();
     console.log(`watch ID: ${watch_id}`);
     this._watch_id = watch_id;
