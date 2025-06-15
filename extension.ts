@@ -51,6 +51,8 @@ export default class IdleHamsterExtension extends Extension {
   _idleMonitorProxy?: Gio.DBusProxy;
   _watchFiredHandlerId?: number;
   _idleDelayHandlerId?: number;
+  _sessionIdleDelayHandlerId?: number;
+  _useSessionIdleDelayHandlerId?: number;
   _watchId?: number;
 
   async enable(): Promise<void> {
@@ -111,28 +113,48 @@ export default class IdleHamsterExtension extends Extension {
     );
     this._settings = this.getSettings();
     this._sessionSettings = this.getSettings("org.gnome.desktop.session");
-    this._idleDelayHandlerId = this._sessionSettings.connect(
-      "changed::idle-delay",
-      async (settings, key) => {
-        const idleDelaySec = settings.get_uint(key);
-        await this.updateIdleWatch(idleDelaySec + IDLE_DELAY_OFFSET_SEC);
+    this._useSessionIdleDelayHandlerId = this._settings.connect(
+      "changed::use-session-idle-delay",
+      (settings: Gio.Settings, key: string): void => {
+        const useSessionIdleDelay = settings.get_boolean(key);
+        this.updateSessionIdleSync(useSessionIdleDelay);
       }
     );
-    const idleDelaySec = this._sessionSettings.get_uint("idle-delay");
-    await this.updateIdleWatch(idleDelaySec + IDLE_DELAY_OFFSET_SEC);
+    const useSessionIdleDelay = this._settings.get_boolean(
+      "use-session-idle-delay"
+    );
+    this.updateSessionIdleSync(useSessionIdleDelay);
+    this._settings.connect(
+      "changed::idle-delay",
+      async (settings: Gio.Settings, key: string): Promise<void> => {
+        const idleDelaySec = settings.get_value(key).get_uint16();
+        await this.updateIdleWatch(idleDelaySec);
+      }
+    );
+    const idleDelaySec = this._settings.get_value("idle-delay").get_uint16();
+    await this.updateIdleWatch(idleDelaySec);
   }
 
   async disable(): Promise<void> {
     const logger = this.getLogger();
     logger.log("idle hamster disable");
     await this.removeIdleWatch();
-    if (this._idleDelayHandlerId) {
-      this._sessionSettings?.disconnect(this._idleDelayHandlerId);
-      this._idleDelayHandlerId = undefined;
+    if (this._sessionIdleDelayHandlerId != undefined) {
+      this._sessionSettings!.disconnect(this._sessionIdleDelayHandlerId);
+      this._sessionIdleDelayHandlerId = undefined;
     }
     this._sessionSettings = undefined;
-    if (this._watchFiredHandlerId) {
-      this._idleMonitorProxy?.disconnect(this._watchFiredHandlerId);
+    if (this._useSessionIdleDelayHandlerId != undefined) {
+      this._settings!.disconnect(this._useSessionIdleDelayHandlerId);
+      this._useSessionIdleDelayHandlerId = undefined;
+    }
+    if (this._idleDelayHandlerId != undefined) {
+      this._settings!.disconnect(this._idleDelayHandlerId);
+      this._idleDelayHandlerId = undefined;
+    }
+    this._settings = undefined;
+    if (this._watchFiredHandlerId != undefined) {
+      this._idleMonitorProxy!.disconnect(this._watchFiredHandlerId);
       this._watchFiredHandlerId = undefined;
     }
     this._idleMonitorProxy = undefined;
@@ -152,8 +174,42 @@ export default class IdleHamsterExtension extends Extension {
     }
   }
 
+  updateSessionIdleDelay(idleDelaySec: number): void {
+    if (idleDelaySec == 0) {
+      // Idle delay of 0 means it's been disabled
+      // so disable the sync ourselves
+      this.updateSessionIdleSync(false);
+    } else {
+      this._settings!.set_value(
+        "idle-delay",
+        GLib.Variant.new_uint16(idleDelaySec + IDLE_DELAY_OFFSET_SEC)
+      );
+    }
+  }
+
+  updateSessionIdleSync(useSessionIdleDelay: boolean): void {
+    if (useSessionIdleDelay && this._sessionIdleDelayHandlerId == undefined) {
+      this._sessionIdleDelayHandlerId = this._sessionSettings!.connect(
+        "changed::idle-delay",
+        (settings: Gio.Settings, key: string): void => {
+          const idleDelaySec = settings.get_uint(key);
+          this.updateSessionIdleDelay(idleDelaySec);
+        }
+      );
+      const idleDelaySec = this._sessionSettings!.get_uint("idle-delay");
+      this.updateSessionIdleDelay(idleDelaySec);
+    } else if (
+      !useSessionIdleDelay &&
+      this._sessionIdleDelayHandlerId != undefined
+    ) {
+      this._sessionSettings!.disconnect(this._sessionIdleDelayHandlerId);
+      this._useSessionIdleDelayHandlerId = undefined;
+    }
+  }
+
   async updateIdleWatch(idleTimeSec: number): Promise<void> {
-    console.log(`Add idle watch for ${toTimeString(idleTimeSec)}`);
+    const logger = this.getLogger();
+    logger.log(`Add idle watch for ${toTimeString(idleTimeSec)}`);
     await this.removeIdleWatch();
     const idleTimeMs = idleTimeSec * 1000;
     const watchId = (
@@ -167,7 +223,7 @@ export default class IdleHamsterExtension extends Extension {
     )
       .get_child_value(0)
       .get_uint32();
-    console.log(`watch ID: ${watchId}`);
+    logger.log(`watch ID: ${watchId}`);
     this._watchId = watchId;
   }
 }
