@@ -129,7 +129,7 @@ export default class IdleHamsterExtension extends Extension {
       "use-session-idle-delay"
     );
     this.updateSessionIdleSync(useSessionIdleDelay);
-    this._settings.connect(
+    this._idleDelayHandlerId = this._settings.connect(
       "changed::idle-delay",
       async (settings: Gio.Settings, key: string): Promise<void> => {
         const idleDelaySec = settings.get_value(key).get_uint16();

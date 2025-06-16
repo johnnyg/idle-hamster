@@ -81,6 +81,7 @@ function bind_with_mapping<T extends GObject.Object, K extends keyof T>(
 
 export default class IdleHamsterPreferences extends ExtensionPreferences {
   _settings?: Gio.Settings;
+  _sessionSettings?: Gio.Settings;
 
   fillPreferencesWindow(window: Adw.PreferencesWindow): Promise<void> {
     this._settings = this.getSettings();
@@ -148,8 +149,9 @@ export default class IdleHamsterPreferences extends ExtensionPreferences {
         GLib.Variant.new_uint16(value * 60)
     );
 
+    this._sessionSettings = this.getSettings("org.gnome.desktop.session");
     bind_with_mapping(
-      this.getSettings("org.gnome.desktop.session"),
+      this._sessionSettings,
       "idle-delay",
       useSessionIdleDelay,
       "sensitive",
