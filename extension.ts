@@ -82,9 +82,14 @@ export default class IdleHamsterExtension extends Extension {
     );
     this._watchFiredHandlerId = this._idleMonitorProxy!.connect(
       "g-signal::WatchFired",
-      async (_proxy, _senderName, _signalName, _parameters) => {
+      async (
+        source: Gio.DBusProxy,
+        _senderName: string | null,
+        _signalName: string,
+        _parameters: GLib.Variant
+      ) => {
         const idleTime = (
-          await this._idleMonitorProxy!.call(
+          await source.call(
             "GetIdletime",
             null,
             Gio.DBusCallFlags.NONE,
