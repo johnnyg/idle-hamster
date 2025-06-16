@@ -183,7 +183,10 @@ export default class IdleHamsterExtension extends Extension {
     if (idleDelaySec == 0) {
       // Idle delay of 0 means it's been disabled
       // so disable the sync ourselves
-      this.updateSessionIdleSync(false);
+      this._settings!.set_value(
+        "use-session-idle-delay",
+        GLib.Variant.new_boolean(false)
+      );
     } else {
       this._settings!.set_value(
         "idle-delay",

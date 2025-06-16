@@ -17,8 +17,8 @@ function bind_with_mapping<T extends GObject.Object, K extends keyof T>(
   property: K,
   type: new () => T,
   flags: Gio.SettingsBindFlags | null,
-  get_mapping: (variant: GLib.Variant) => T[K] | null,
-  set_mapping: (
+  get_mapping?: (variant: GLib.Variant) => T[K] | null,
+  set_mapping?: (
     value: T[K],
     variantType: GLib.VariantType
   ) => GLib.Variant | null
@@ -42,37 +42,41 @@ function bind_with_mapping<T extends GObject.Object, K extends keyof T>(
   // ignore that
   let ignoreSet: boolean = false;
 
-  settings!.bind_with_mapping(
-    key,
-    dummy,
-    property as string,
-    flags & ~Gio.SettingsBindFlags.SET,
-    (_: K, variant: GLib.Variant): boolean => {
-      const newProperty = get_mapping(variant);
-      if (newProperty == null) {
-        return false;
-      }
-      ignoreSet = true;
-      object[property] = newProperty;
-      return true;
-    },
-    null
-  );
+  if (flags & Gio.SettingsBindFlags.GET && get_mapping != undefined) {
+    settings!.bind_with_mapping(
+      key,
+      dummy,
+      property as string,
+      flags & ~Gio.SettingsBindFlags.SET,
+      (_: K, variant: GLib.Variant): boolean => {
+        const newProperty = get_mapping(variant);
+        if (newProperty == null) {
+          return false;
+        }
+        ignoreSet = true;
+        object[property] = newProperty;
+        return true;
+      },
+      null
+    );
+  }
 
-  settings!.bind_with_mapping(
-    key,
-    object,
-    property as string,
-    flags & ~Gio.SettingsBindFlags.GET,
-    null,
-    (value: T[K], variantType: GLib.VariantType): GLib.Variant | null => {
-      if (ignoreSet) {
-        ignoreSet = false;
-        return null;
+  if (flags & Gio.SettingsBindFlags.SET && set_mapping != undefined) {
+    settings!.bind_with_mapping(
+      key,
+      object,
+      property as string,
+      flags & ~Gio.SettingsBindFlags.GET,
+      null,
+      (value: T[K], variantType: GLib.VariantType): GLib.Variant | null => {
+        if (ignoreSet) {
+          ignoreSet = false;
+          return null;
+        }
+        return set_mapping(value, variantType);
       }
-      return set_mapping(value, variantType);
-    }
-  );
+    );
+  }
 }
 
 export default class IdleHamsterPreferences extends ExtensionPreferences {
@@ -142,6 +146,16 @@ export default class IdleHamsterPreferences extends ExtensionPreferences {
         Math.floor(variant.get_uint16() / 60),
       (value: number, _: GLib.VariantType): GLib.Variant =>
         GLib.Variant.new_uint16(value * 60)
+    );
+
+    bind_with_mapping(
+      this.getSettings("org.gnome.desktop.session"),
+      "idle-delay",
+      useSessionIdleDelay,
+      "sensitive",
+      Adw.SwitchRow,
+      Gio.SettingsBindFlags.GET,
+      (variant: GLib.Variant): boolean | null => variant.get_uint32() > 0
     );
 
     return Promise.resolve();
