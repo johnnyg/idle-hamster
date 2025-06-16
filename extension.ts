@@ -45,19 +45,16 @@ function toTimeString(sec: number): string {
 }
 
 export default class IdleHamsterExtension extends Extension {
-  _settings?: Gio.Settings;
-  _sessionSettings?: Gio.Settings;
   _hamsterProxy?: Gio.DBusProxy;
   _idleMonitorProxy?: Gio.DBusProxy;
+  _settings?: Map<string, Gio.Settings>;
+  _settingsHandlerIds?: Map<string, Map<string, number>>;
   _watchFiredHandlerId?: number;
-  _idleDelayHandlerId?: number;
-  _sessionIdleDelayHandlerId?: number;
-  _useSessionIdleDelayHandlerId?: number;
   _watchId?: number;
 
   async enable(): Promise<void> {
     const logger = this.getLogger();
-    logger.log("idle hamster enable");
+    logger.log("enabled");
     this._hamsterProxy = await (
       Gio.DBusProxy.new_for_bus as GioDBusProxyNewForBus
     )(
@@ -116,47 +113,34 @@ export default class IdleHamsterExtension extends Extension {
         }
       }
     );
-    this._settings = this.getSettings();
-    this._sessionSettings = this.getSettings("org.gnome.desktop.session");
-    this._useSessionIdleDelayHandlerId = this._settings.connect(
-      "changed::use-session-idle-delay",
-      (settings: Gio.Settings, key: string): void => {
-        const useSessionIdleDelay = settings.get_boolean(key);
-        this.updateSessionIdleSync(useSessionIdleDelay);
-      }
+    await this.connectSettingsKeyChange(
+      undefined,
+      "use-session-idle-delay",
+      this.updateSessionIdleSync.bind(this)
     );
-    const useSessionIdleDelay = this._settings.get_boolean(
-      "use-session-idle-delay"
+    await this.connectSettingsKeyChange(
+      undefined,
+      "idle-delay",
+      this.updateIdleWatch.bind(this)
     );
-    this.updateSessionIdleSync(useSessionIdleDelay);
-    this._idleDelayHandlerId = this._settings.connect(
-      "changed::idle-delay",
-      async (settings: Gio.Settings, key: string): Promise<void> => {
-        const idleDelaySec = settings.get_value(key).get_uint16();
-        await this.updateIdleWatch(idleDelaySec);
-      }
-    );
-    const idleDelaySec = this._settings.get_value("idle-delay").get_uint16();
-    await this.updateIdleWatch(idleDelaySec);
   }
 
   async disable(): Promise<void> {
     const logger = this.getLogger();
-    logger.log("idle hamster disable");
     await this.removeIdleWatch();
-    if (this._sessionIdleDelayHandlerId != undefined) {
-      this._sessionSettings!.disconnect(this._sessionIdleDelayHandlerId);
-      this._sessionIdleDelayHandlerId = undefined;
+    for (let [schema, handlerIds] of this._settingsHandlerIds ?? []) {
+      const settings = this._settings!.get(schema);
+      for (let [key, handlerId] of handlerIds) {
+        settings?.disconnect(handlerId);
+        logger.log(
+          `disconnected from changes to ${schema}.${key} with handler ID ${handlerId}`
+        );
+      }
+      handlerIds.clear();
     }
-    this._sessionSettings = undefined;
-    if (this._useSessionIdleDelayHandlerId != undefined) {
-      this._settings!.disconnect(this._useSessionIdleDelayHandlerId);
-      this._useSessionIdleDelayHandlerId = undefined;
-    }
-    if (this._idleDelayHandlerId != undefined) {
-      this._settings!.disconnect(this._idleDelayHandlerId);
-      this._idleDelayHandlerId = undefined;
-    }
+    this._settingsHandlerIds?.clear();
+    this._settingsHandlerIds = undefined;
+    this._settings?.clear();
     this._settings = undefined;
     if (this._watchFiredHandlerId != undefined) {
       this._idleMonitorProxy!.disconnect(this._watchFiredHandlerId);
@@ -164,6 +148,7 @@ export default class IdleHamsterExtension extends Extension {
     }
     this._idleMonitorProxy = undefined;
     this._hamsterProxy = undefined;
+    logger.log("disabled");
   }
 
   async removeIdleWatch(): Promise<void> {
@@ -175,49 +160,101 @@ export default class IdleHamsterExtension extends Extension {
         -1,
         null
       );
+      this.getLogger().log(`remove watch with ID ${this._watchId}`);
       this._watchId = undefined;
     }
   }
 
-  updateSessionIdleDelay(idleDelaySec: number): void {
+  async connectSettingsKeyChange<T>(
+    schema: string | undefined,
+    key: string,
+    callback: (value: T) => Promise<void>
+  ): Promise<void> {
+    const logger = this.getLogger();
+    schema = schema ?? this.metadata["settings-schema"];
+    const existingHandlerId = this._settingsHandlerIds?.get(schema!)?.get(key);
+    if (existingHandlerId != undefined) {
+      return;
+    }
+    let settings = this._settings?.get(schema!);
+    if (settings == undefined) {
+      if (this._settings == undefined) {
+        this._settings = new Map();
+      }
+      settings = this.getSettings(schema!);
+      this._settings?.set(schema!, settings);
+    }
+    const handlerId = settings.connect(
+      `changed::${key}`,
+      async (settings: Gio.Settings, key: string): Promise<void> => {
+        const value: T = settings.get_value(key).recursiveUnpack();
+        logger.log(`changed ${settings.schema_id}.${key}=${value}`);
+        await callback(value);
+      }
+    );
+    logger.log(
+      `connected to changes of ${schema}.${key} with handler ID ${handlerId}`
+    );
+    // Need to always access a key after connecting for changes
+    await callback(settings!.get_value(key).recursiveUnpack());
+    let handlerIds = this._settingsHandlerIds?.get(schema!);
+    if (handlerIds == undefined) {
+      handlerIds = new Map();
+      if (this._settingsHandlerIds == undefined) {
+        this._settingsHandlerIds = new Map();
+      }
+      this._settingsHandlerIds.set(schema!, handlerIds);
+    }
+    handlerIds.set(key, handlerId);
+  }
+
+  disconnectSettingsKeyChange(schema: string | undefined, key: string): void {
+    const logger = this.getLogger();
+    schema = schema ?? this.metadata["settings-schema"];
+    const handlerIds = this._settingsHandlerIds?.get(schema!);
+    const handlerId = handlerIds?.get(key);
+    if (handlerId != undefined) {
+      this._settings!.get(schema!)?.disconnect(handlerId);
+      handlerIds?.delete(key);
+      logger.log(
+        `disconnected from changes to ${schema}.${key} with handler ID ${handlerId}`
+      );
+    }
+  }
+
+  async updateSessionIdleDelay(idleDelaySec: number): Promise<void> {
+    const settings = this.getSettings();
     if (idleDelaySec == 0) {
       // Idle delay of 0 means it's been disabled
       // so disable the sync ourselves
-      this._settings!.set_value(
+      settings.set_value(
         "use-session-idle-delay",
         GLib.Variant.new_boolean(false)
       );
     } else {
-      this._settings!.set_value(
+      settings.set_value(
         "idle-delay",
         GLib.Variant.new_uint16(idleDelaySec + IDLE_DELAY_OFFSET_SEC)
       );
     }
   }
 
-  updateSessionIdleSync(useSessionIdleDelay: boolean): void {
-    if (useSessionIdleDelay && this._sessionIdleDelayHandlerId == undefined) {
-      this._sessionIdleDelayHandlerId = this._sessionSettings!.connect(
-        "changed::idle-delay",
-        (settings: Gio.Settings, key: string): void => {
-          const idleDelaySec = settings.get_uint(key);
-          this.updateSessionIdleDelay(idleDelaySec);
-        }
+  async updateSessionIdleSync(useSessionIdleDelay: boolean): Promise<void> {
+    const schema = "org.gnome.desktop.session";
+    const key = "idle-delay";
+    if (useSessionIdleDelay) {
+      await this.connectSettingsKeyChange(
+        schema,
+        key,
+        this.updateSessionIdleDelay.bind(this)
       );
-      const idleDelaySec = this._sessionSettings!.get_uint("idle-delay");
-      this.updateSessionIdleDelay(idleDelaySec);
-    } else if (
-      !useSessionIdleDelay &&
-      this._sessionIdleDelayHandlerId != undefined
-    ) {
-      this._sessionSettings!.disconnect(this._sessionIdleDelayHandlerId);
-      this._useSessionIdleDelayHandlerId = undefined;
+    } else {
+      this.disconnectSettingsKeyChange(schema, key);
     }
   }
 
   async updateIdleWatch(idleTimeSec: number): Promise<void> {
     const logger = this.getLogger();
-    logger.log(`Add idle watch for ${toTimeString(idleTimeSec)}`);
     await this.removeIdleWatch();
     const idleTimeMs = idleTimeSec * 1000;
     const watchId = (
@@ -231,7 +268,9 @@ export default class IdleHamsterExtension extends Extension {
     )
       .get_child_value(0)
       .get_uint32();
-    logger.log(`watch ID: ${watchId}`);
     this._watchId = watchId;
+    logger.log(
+      `add idle watch for ${toTimeString(idleTimeSec)} with ID ${watchId}`
+    );
   }
 }
