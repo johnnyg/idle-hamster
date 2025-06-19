@@ -90,55 +90,52 @@ export default class IdleHamsterPreferences extends ExtensionPreferences {
       title: _("General"),
       iconName: "dialog-information-symbolic",
     });
+    window.add(page);
 
-    const syncGroup = new Adw.PreferencesGroup({
-      title: _("Synchronisation"),
-      description: _("Configure if our settings are taken from elsewhere"),
+    const idleGroup = new Adw.PreferencesGroup({
+      title: _("Idle settings"),
+      description: _("Configure how we define how long idle is"),
     });
-    page.add(syncGroup);
-
-    const useSessionIdleDelay = new Adw.SwitchRow({
-      title: _("Use screen lock idle duration"),
-      subtitle: _("Use the same idle time as the screen lock"),
-    });
-    syncGroup.add(useSessionIdleDelay);
-
-    const fixedGroup = new Adw.PreferencesGroup({
-      title: _("Fixed settings"),
-      description: _("Configure idle time based off a fixed duration"),
-    });
-    page.add(fixedGroup);
+    page.add(idleGroup);
 
     const idleDelay = new Adw.SpinRow({
       title: _("Idle duration"),
-      subtitle: _("How many minutes before we stop tracking a task"),
+      subtitle: _("How many minutes before we stop tracking an activity"),
       adjustment: new Gtk.Adjustment({
         lower: 1,
         upper: 1000,
         stepIncrement: 1,
       }),
     });
-    fixedGroup.add(idleDelay);
+    idleGroup.add(idleDelay);
 
-    const screenLockGroup = new Adw.PreferencesGroup({
-      title: _("Screen Lock"),
-      description: _("Configure stop tracking based on screen lock"),
+    const otherStopEvents = new Adw.PreferencesGroup({
+      title: _("Other stop events"),
+      description: _(
+        "Configure whether we stop tracking based on other events"
+      ),
     });
-    page.add(screenLockGroup);
+    page.add(otherStopEvents);
 
     const stopOnLock = new Adw.SwitchRow({
       title: _("Stop tracking activity on screen lock"),
-      subtitle: _("Stop tracking on screen lock despite idle time"),
+      subtitle: _("Stop tracking on screen lock regardless of idle time"),
     });
-    screenLockGroup.add(stopOnLock);
+    otherStopEvents.add(stopOnLock);
 
-    window.add(page);
+    const useSessionIdleDelay = new Adw.SwitchRow({
+      title: _("Use screen lock idle duration"),
+      subtitle: _("Use the same idle time as the screen lock"),
+    });
+    idleGroup.add(useSessionIdleDelay);
 
     useSessionIdleDelay.bind_property(
       "active",
-      fixedGroup,
+      idleDelay,
       "sensitive",
-      GObject.BindingFlags.DEFAULT | GObject.BindingFlags.INVERT_BOOLEAN
+      GObject.BindingFlags.DEFAULT |
+        GObject.BindingFlags.INVERT_BOOLEAN |
+        GObject.BindingFlags.SYNC_CREATE
     );
 
     this._settings!.bind(
@@ -177,6 +174,16 @@ export default class IdleHamsterPreferences extends ExtensionPreferences {
       stopOnLock,
       "active",
       Gio.SettingsBindFlags.DEFAULT
+    );
+
+    useSessionIdleDelay.set_property(
+      "active",
+      this._settings!.get_boolean("use-session-idle-delay")
+    );
+
+    idleDelay.set_property(
+      "sensitive",
+      !this._settings!.get_boolean("use-session-idle-delay")
     );
   }
 }
