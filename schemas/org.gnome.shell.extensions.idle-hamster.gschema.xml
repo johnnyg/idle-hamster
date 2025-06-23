@@ -4,12 +4,17 @@
     <key name="idle-delay" type="q">
       <default>10</default>
       <summary>Idle delay</summary>
-      <description>The duration in minutes before we are considered idle and should stop tracking tasks</description>
+      <description>The duration in minutes before we are considered idle and should stop tracking activities</description>
     </key>
     <key name="use-session-idle-delay" type="b">
       <default>false</default>
       <summary>Use session idle delay</summary>
       <description>Whether to use the session's idle delay as our idle delay</description>
+    </key>
+    <key name="stop-on-lock" type="b">
+      <default>false</default>
+      <summary>Stop tracking activity when screen is locked</summary>
+      <description>Whether to stop tracking an activity when the screen is locked</description>
     </key>
   </schema>
 </schemalist>

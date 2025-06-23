@@ -83,7 +83,7 @@ export default class IdleHamsterPreferences extends ExtensionPreferences {
   _settings?: Gio.Settings;
   _sessionSettings?: Gio.Settings;
 
-  fillPreferencesWindow(window: Adw.PreferencesWindow): Promise<void> {
+  async fillPreferencesWindow(window: Adw.PreferencesWindow): Promise<void> {
     this._settings = this.getSettings();
 
     const page = new Adw.PreferencesPage({
@@ -119,6 +119,18 @@ export default class IdleHamsterPreferences extends ExtensionPreferences {
       }),
     });
     fixedGroup.add(idleDelay);
+
+    const screenLockGroup = new Adw.PreferencesGroup({
+      title: _("Screen Lock"),
+      description: _("Configure stop tracking based on screen lock"),
+    });
+    page.add(screenLockGroup);
+
+    const stopOnLock = new Adw.SwitchRow({
+      title: _("Stop tracking activity on screen lock"),
+      subtitle: _("Stop tracking on screen lock despite idle time"),
+    });
+    screenLockGroup.add(stopOnLock);
 
     window.add(page);
 
@@ -160,6 +172,11 @@ export default class IdleHamsterPreferences extends ExtensionPreferences {
       (variant: GLib.Variant): boolean | null => variant.get_uint32() > 0
     );
 
-    return Promise.resolve();
+    this._settings!.bind(
+      "stop-on-lock",
+      stopOnLock,
+      "active",
+      Gio.SettingsBindFlags.DEFAULT
+    );
   }
 }

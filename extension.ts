@@ -104,6 +104,7 @@ function toTimeString(sec: number): string {
 export default class IdleHamsterExtension extends Extension {
   _hamsterProxy?: Gio.DBusProxy;
   _idleMonitorProxy?: Gio.DBusProxy;
+  _screensaverProxy?: Gio.DBusProxy;
   _settings?: Gio.Settings;
   _signals?: Map<string, SignalConnection>;
 
@@ -158,6 +159,14 @@ export default class IdleHamsterExtension extends Extension {
         this.updateIdleWatchSignal.bind(this)
       )
     );
+    this._signals!.set(
+      "stopOnLock",
+      await connectSettingsKeyChangeSignal(
+        this._settings,
+        "stop-on-lock",
+        this.updateStopOnLock.bind(this)
+      )
+    );
   }
 
   async disable(): Promise<void> {
@@ -168,6 +177,7 @@ export default class IdleHamsterExtension extends Extension {
     this._signals?.clear();
     this._settings = undefined;
     this._idleMonitorProxy = undefined;
+    this._screensaverProxy = undefined;
     this._hamsterProxy = undefined;
     logger.log("disabled");
   }
@@ -242,6 +252,43 @@ export default class IdleHamsterExtension extends Extension {
       "idleWatch",
       await this.connectIdleWatchSignal(idleTimeSec)
     );
+  }
+
+  async updateStopOnLock(stopOnLock: boolean): Promise<void> {
+    const logger = this.getLogger();
+    const signalId = "activeChanged";
+    this._signals!.get(signalId)?.disconnect();
+    if (stopOnLock) {
+      if (this._screensaverProxy === undefined) {
+        this._screensaverProxy = await (
+          Gio.DBusProxy.new_for_bus as GioDBusProxyNewForBus
+        )(
+          Gio.BusType.SESSION,
+          Gio.DBusProxyFlags.NONE,
+          null,
+          "org.gnome.ScreenSaver",
+          "/org/gnome/ScreenSaver",
+          "org.gnome.ScreenSaver",
+          null
+        );
+      }
+      this._signals!.set(
+        signalId,
+        await connectProxySignal(
+          this._screensaverProxy!,
+          "ActiveChanged",
+          async (active: boolean): Promise<void> => {
+            logger.log(`screensaver active: ${active}`);
+            if (active) {
+              this.stopTracking();
+            }
+          }
+        )
+      );
+    } else {
+      this._signals!.delete(signalId);
+      this._screensaverProxy = undefined;
+    }
   }
 
   async connectIdleWatchSignal(idleTimeSec: number): Promise<SignalConnection> {
