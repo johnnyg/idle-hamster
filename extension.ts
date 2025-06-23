@@ -40,6 +40,63 @@ type GioDBusProxyNewForBus = (
   cancellable?: Gio.Cancellable | null
 ) => Promise<Gio.DBusProxy>;
 
+interface SignalConnection {
+  disconnect(): Promise<void>;
+}
+
+async function connectSettingsKeyChangeSignal<T>(
+  settings: Gio.Settings,
+  key: string,
+  callback: (value: T) => Promise<void>
+): Promise<SignalConnection> {
+  const logger = console;
+  const handlerId = settings.connect(
+    `changed::${key}`,
+    async (settings: Gio.Settings, key: string): Promise<void> => {
+      const value: T = settings.get_value(key).recursiveUnpack();
+      logger.log(`changed ${settings.schema_id}.${key}=${value}`);
+      await callback(value);
+    }
+  );
+  logger.log(
+    `connected to changes of ${settings.schemaId}.${key} with handler ID ${handlerId}`
+  );
+  // Need to always access a key after connecting for changes
+  await callback(settings!.get_value(key).recursiveUnpack());
+  return {
+    async disconnect(): Promise<void> {
+      settings.disconnect(handlerId);
+      logger.log(
+        `disconnected from changes to ${settings.schemaId}.${key} with handler ID ${handlerId}`
+      );
+    },
+  };
+}
+
+async function connectProxySignal<T>(
+  proxy: Gio.DBusProxy,
+  signal: string,
+  callback: (value: T) => Promise<void>
+): Promise<SignalConnection> {
+  const handlerId = proxy.connect(
+    `g-signal::${signal}`,
+    async (
+      _source: Gio.DBusProxy,
+      _senderName: string | null,
+      _signalName: string,
+      parameters: GLib.Variant
+    ) => {
+      const value = parameters.recursiveUnpack();
+      await callback(value);
+    }
+  );
+  return {
+    async disconnect(): Promise<void> {
+      proxy.disconnect(handlerId);
+    },
+  };
+}
+
 function toTimeString(sec: number): string {
   return `${Math.floor(sec / 60)} min ${Math.floor(sec % 60)} sec`;
 }
@@ -47,10 +104,8 @@ function toTimeString(sec: number): string {
 export default class IdleHamsterExtension extends Extension {
   _hamsterProxy?: Gio.DBusProxy;
   _idleMonitorProxy?: Gio.DBusProxy;
-  _settings?: Map<string, Gio.Settings>;
-  _settingsHandlerIds?: Map<string, Map<string, number>>;
-  _watchFiredHandlerId?: number;
-  _watchId?: number;
+  _settings?: Gio.Settings;
+  _signals?: Map<string, SignalConnection>;
 
   async enable(): Promise<void> {
     const logger = this.getLogger();
@@ -77,162 +132,84 @@ export default class IdleHamsterExtension extends Extension {
       "org.gnome.Mutter.IdleMonitor",
       null
     );
-    this._watchFiredHandlerId = this._idleMonitorProxy!.connect(
-      "g-signal::WatchFired",
-      async (
-        source: Gio.DBusProxy,
-        _senderName: string | null,
-        _signalName: string,
-        _parameters: GLib.Variant
-      ) => {
-        const idleTime = (
-          await source.call(
-            "GetIdletime",
-            null,
-            Gio.DBusCallFlags.NONE,
-            -1,
-            null
-          )
-        )
-          .get_child_value(0)
-          .get_uint64();
-        logger.log(`idle time: ${toTimeString(idleTime / 1000)}`);
-        const lastActiveTime = Math.floor((Date.now() - idleTime) / 1000);
-        // Workaround for https://github.com/projecthamster/hamster/issues/775
-        const endTime = lastActiveTime - new Date().getTimezoneOffset() * 60;
-        try {
-          await this._hamsterProxy!.call(
-            "StopTracking",
-            new GLib.Variant("(i)", [endTime]),
-            Gio.DBusCallFlags.NONE,
-            -1,
-            null
-          );
-        } catch (e) {
-          logger.log(`error: ${e}`);
-        }
-      }
+    this._settings = this.getSettings();
+    this._signals = new Map();
+    this._signals!.set(
+      "watchFired",
+      await connectProxySignal(
+        this._idleMonitorProxy,
+        "WatchFired",
+        this.stopTracking.bind(this)
+      )
     );
-    await this.connectSettingsKeyChange(
-      undefined,
-      "use-session-idle-delay",
-      this.updateSessionIdleSync.bind(this)
+    this._signals!.set(
+      "useSessionIdleDelay",
+      await connectSettingsKeyChangeSignal(
+        this._settings,
+        "use-session-idle-delay",
+        this.updateSessionIdleSync.bind(this)
+      )
     );
-    await this.connectSettingsKeyChange(
-      undefined,
-      "idle-delay",
-      this.updateIdleWatch.bind(this)
+    this._signals!.set(
+      "idleDelay",
+      await connectSettingsKeyChangeSignal(
+        this._settings,
+        "idle-delay",
+        this.updateIdleWatchSignal.bind(this)
+      )
     );
   }
 
   async disable(): Promise<void> {
     const logger = this.getLogger();
-    await this.removeIdleWatch();
-    for (let [schema, handlerIds] of this._settingsHandlerIds ?? []) {
-      const settings = this._settings!.get(schema);
-      for (let [key, handlerId] of handlerIds) {
-        settings?.disconnect(handlerId);
-        logger.log(
-          `disconnected from changes to ${schema}.${key} with handler ID ${handlerId}`
-        );
-      }
-      handlerIds.clear();
+    for (let [_signalId, signal] of this._signals ?? []) {
+      signal?.disconnect();
     }
-    this._settingsHandlerIds?.clear();
-    this._settingsHandlerIds = undefined;
-    this._settings?.clear();
+    this._signals?.clear();
     this._settings = undefined;
-    if (this._watchFiredHandlerId != undefined) {
-      this._idleMonitorProxy!.disconnect(this._watchFiredHandlerId);
-      this._watchFiredHandlerId = undefined;
-    }
     this._idleMonitorProxy = undefined;
     this._hamsterProxy = undefined;
     logger.log("disabled");
   }
 
-  async removeIdleWatch(): Promise<void> {
-    if (this._watchId != undefined) {
+  async stopTracking(): Promise<void> {
+    const logger = this.getLogger();
+    const [idleTime] = (
       await this._idleMonitorProxy!.call(
-        "RemoveWatch",
-        new GLib.Variant("(u)", [this._watchId]),
+        "GetIdletime",
+        null,
+        Gio.DBusCallFlags.NONE,
+        -1,
+        null
+      )
+    ).recursiveUnpack();
+    logger.log(`idle time: ${toTimeString(idleTime / 1000)}`);
+    const lastActiveTime = Math.floor((Date.now() - idleTime) / 1000);
+    // Workaround for https://github.com/projecthamster/hamster/issues/775
+    const endTime = lastActiveTime - new Date().getTimezoneOffset() * 60;
+    try {
+      await this._hamsterProxy!.call(
+        "StopTracking",
+        new GLib.Variant("(i)", [endTime]),
         Gio.DBusCallFlags.NONE,
         -1,
         null
       );
-      this.getLogger().log(`remove watch with ID ${this._watchId}`);
-      this._watchId = undefined;
-    }
-  }
-
-  async connectSettingsKeyChange<T>(
-    schema: string | undefined,
-    key: string,
-    callback: (value: T) => Promise<void>
-  ): Promise<void> {
-    const logger = this.getLogger();
-    schema = schema ?? this.metadata["settings-schema"];
-    const existingHandlerId = this._settingsHandlerIds?.get(schema!)?.get(key);
-    if (existingHandlerId != undefined) {
-      return;
-    }
-    let settings = this._settings?.get(schema!);
-    if (settings == undefined) {
-      if (this._settings == undefined) {
-        this._settings = new Map();
-      }
-      settings = this.getSettings(schema!);
-      this._settings?.set(schema!, settings);
-    }
-    const handlerId = settings.connect(
-      `changed::${key}`,
-      async (settings: Gio.Settings, key: string): Promise<void> => {
-        const value: T = settings.get_value(key).recursiveUnpack();
-        logger.log(`changed ${settings.schema_id}.${key}=${value}`);
-        await callback(value);
-      }
-    );
-    logger.log(
-      `connected to changes of ${schema}.${key} with handler ID ${handlerId}`
-    );
-    // Need to always access a key after connecting for changes
-    await callback(settings!.get_value(key).recursiveUnpack());
-    let handlerIds = this._settingsHandlerIds?.get(schema!);
-    if (handlerIds == undefined) {
-      handlerIds = new Map();
-      if (this._settingsHandlerIds == undefined) {
-        this._settingsHandlerIds = new Map();
-      }
-      this._settingsHandlerIds.set(schema!, handlerIds);
-    }
-    handlerIds.set(key, handlerId);
-  }
-
-  disconnectSettingsKeyChange(schema: string | undefined, key: string): void {
-    const logger = this.getLogger();
-    schema = schema ?? this.metadata["settings-schema"];
-    const handlerIds = this._settingsHandlerIds?.get(schema!);
-    const handlerId = handlerIds?.get(key);
-    if (handlerId != undefined) {
-      this._settings!.get(schema!)?.disconnect(handlerId);
-      handlerIds?.delete(key);
-      logger.log(
-        `disconnected from changes to ${schema}.${key} with handler ID ${handlerId}`
-      );
+    } catch (e) {
+      logger.log(`error: ${e}`);
     }
   }
 
   async updateSessionIdleDelay(idleDelaySec: number): Promise<void> {
-    const settings = this.getSettings();
     if (idleDelaySec == 0) {
       // Idle delay of 0 means it's been disabled
       // so disable the sync ourselves
-      settings.set_value(
+      this._settings!.set_value(
         "use-session-idle-delay",
         GLib.Variant.new_boolean(false)
       );
     } else {
-      settings.set_value(
+      this._settings!.set_value(
         "idle-delay",
         GLib.Variant.new_uint16(idleDelaySec + IDLE_DELAY_OFFSET_SEC)
       );
@@ -241,36 +218,57 @@ export default class IdleHamsterExtension extends Extension {
 
   async updateSessionIdleSync(useSessionIdleDelay: boolean): Promise<void> {
     const schema = "org.gnome.desktop.session";
+    const settings = this.getSettings(schema);
     const key = "idle-delay";
+    const signalId = "sessionIdleDelay";
+    this._signals!.get(signalId)?.disconnect();
     if (useSessionIdleDelay) {
-      await this.connectSettingsKeyChange(
-        schema,
-        key,
-        this.updateSessionIdleDelay.bind(this)
+      this._signals!.set(
+        signalId,
+        await connectSettingsKeyChangeSignal(
+          settings,
+          key,
+          this.updateSessionIdleDelay.bind(this)
+        )
       );
     } else {
-      this.disconnectSettingsKeyChange(schema, key);
+      this._signals!.delete(signalId);
     }
   }
 
-  async updateIdleWatch(idleTimeSec: number): Promise<void> {
+  async updateIdleWatchSignal(idleTimeSec: number): Promise<void> {
+    this._signals!.get("idleWatch")?.disconnect();
+    this._signals!.set(
+      "idleWatch",
+      await this.connectIdleWatchSignal(idleTimeSec)
+    );
+  }
+
+  async connectIdleWatchSignal(idleTimeSec: number): Promise<SignalConnection> {
     const logger = this.getLogger();
-    await this.removeIdleWatch();
     const idleTimeMs = idleTimeSec * 1000;
-    const watchId = (
-      await this._idleMonitorProxy!.call(
-        "AddIdleWatch",
-        new GLib.Variant("(t)", [idleTimeMs]),
-        Gio.DBusCallFlags.NONE,
-        -1,
-        null
-      )
-    )
-      .get_child_value(0)
-      .get_uint32();
-    this._watchId = watchId;
+    const watchId = await this._idleMonitorProxy!.call(
+      "AddIdleWatch",
+      new GLib.Variant("(t)", [idleTimeMs]),
+      Gio.DBusCallFlags.NONE,
+      -1,
+      null
+    );
     logger.log(
       `add idle watch for ${toTimeString(idleTimeSec)} with ID ${watchId}`
     );
+    const proxy = this._idleMonitorProxy;
+    return {
+      async disconnect(): Promise<void> {
+        await proxy!.call(
+          "RemoveWatch",
+          watchId,
+          Gio.DBusCallFlags.NONE,
+          -1,
+          null
+        );
+        logger.log(`remove watch with ID ${watchId}`);
+      },
+    };
   }
 }
