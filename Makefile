@@ -3,7 +3,7 @@ SCHEMA_NAME=$(shell jq -r '."settings-schema"' metadata.json)
 BUNDLE_FILENAME=$(UUID).shell-extension.zip
 SCHEMA_FILENAME=schemas/$(SCHEMA_NAME).gschema.xml
 
-.PHONY: all pack install clean test-schema
+.PHONY: all pack install clean test-schema test-nested
 
 all: dist/extension.js
 
@@ -26,3 +26,7 @@ install: $(BUNDLE_FILENAME)
 
 clean:
 	@rm -rf dist node_modules $(BUNDLE_FILENAME)
+
+test-nested: install
+	@env G_MESSAGES_DEBUG="GNOME Shell" MUTTER_DEBUG_DUMMY_MODE_SPECS=2160x1350 SHELL_DEBUG=all WAYLAND_DISPLAY=wayland-1 \
+		dbus-run-session -- gnome-shell --wayland-display=wayland-1 --nested --wayland

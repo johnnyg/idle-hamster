@@ -16,6 +16,7 @@
  * SPDX-License-Identifier: GPL-2.0-or-later
  */
 
+import { ConsoleLike } from "@girs/gnome-shell/extensions/extension";
 import Gio from "gi://Gio";
 import GLib from "gi://GLib";
 
@@ -45,20 +46,20 @@ interface SignalConnection {
 }
 
 async function connectSettingsKeyChangeSignal<T>(
+  logger: ConsoleLike,
   settings: Gio.Settings,
   key: string,
   callback: (value: T) => Promise<void>
 ): Promise<SignalConnection> {
-  const logger = console;
   const handlerId = settings.connect(
     `changed::${key}`,
     async (settings: Gio.Settings, key: string): Promise<void> => {
       const value: T = settings.get_value(key).recursiveUnpack();
-      logger.log(`changed ${settings.schema_id}.${key}=${value}`);
+      logger.info(`changed ${settings.schema_id}.${key}=${value}`);
       await callback(value);
     }
   );
-  logger.log(
+  logger.debug(
     `connected to changes of ${settings.schemaId}.${key} with handler ID ${handlerId}`
   );
   // Need to always access a key after connecting for changes
@@ -66,7 +67,7 @@ async function connectSettingsKeyChangeSignal<T>(
   return {
     async disconnect(): Promise<void> {
       settings.disconnect(handlerId);
-      logger.log(
+      logger.debug(
         `disconnected from changes to ${settings.schemaId}.${key} with handler ID ${handlerId}`
       );
     },
@@ -74,6 +75,7 @@ async function connectSettingsKeyChangeSignal<T>(
 }
 
 async function connectProxySignal<T>(
+  logger: ConsoleLike,
   proxy: Gio.DBusProxy,
   signal: string,
   callback: (value: T) => Promise<void>
@@ -81,18 +83,27 @@ async function connectProxySignal<T>(
   const handlerId = proxy.connect(
     `g-signal::${signal}`,
     async (
-      _source: Gio.DBusProxy,
+      source: Gio.DBusProxy,
       _senderName: string | null,
-      _signalName: string,
+      signalName: string,
       parameters: GLib.Variant
     ) => {
       const value = parameters.recursiveUnpack();
+      logger.info(
+        `received signal ${signalName}=${value} from ${source.get_interface_name()}`
+      );
       await callback(value);
     }
+  );
+  logger.debug(
+    `connected to signal '${signal}' of ${proxy.get_interface_name()} with handler ID ${handlerId}`
   );
   return {
     async disconnect(): Promise<void> {
       proxy.disconnect(handlerId);
+      logger.debug(
+        `disconnected from signal '${signal}' of ${proxy.get_interface_name()} with handler ID ${handlerId}`
+      );
     },
   };
 }
@@ -110,7 +121,7 @@ export default class IdleHamsterExtension extends Extension {
 
   async enable(): Promise<void> {
     const logger = this.getLogger();
-    logger.log("enabled");
+    logger.debug("enabled");
     this._hamsterProxy = await (
       Gio.DBusProxy.new_for_bus as GioDBusProxyNewForBus
     )(
@@ -138,6 +149,7 @@ export default class IdleHamsterExtension extends Extension {
     this._signals!.set(
       "watchFired",
       await connectProxySignal(
+        logger,
         this._idleMonitorProxy,
         "WatchFired",
         this.stopTracking.bind(this)
@@ -146,6 +158,7 @@ export default class IdleHamsterExtension extends Extension {
     this._signals!.set(
       "useSessionIdleDelay",
       await connectSettingsKeyChangeSignal(
+        logger,
         this._settings,
         "use-session-idle-delay",
         this.updateSessionIdleSync.bind(this)
@@ -154,6 +167,7 @@ export default class IdleHamsterExtension extends Extension {
     this._signals!.set(
       "idleDelay",
       await connectSettingsKeyChangeSignal(
+        logger,
         this._settings,
         "idle-delay",
         this.updateIdleWatchSignal.bind(this)
@@ -162,6 +176,7 @@ export default class IdleHamsterExtension extends Extension {
     this._signals!.set(
       "stopOnLock",
       await connectSettingsKeyChangeSignal(
+        logger,
         this._settings,
         "stop-on-lock",
         this.updateStopOnLock.bind(this)
@@ -179,7 +194,7 @@ export default class IdleHamsterExtension extends Extension {
     this._idleMonitorProxy = undefined;
     this._screensaverProxy = undefined;
     this._hamsterProxy = undefined;
-    logger.log("disabled");
+    logger.debug("disabled");
   }
 
   async stopTracking(): Promise<void> {
@@ -193,10 +208,13 @@ export default class IdleHamsterExtension extends Extension {
         null
       )
     ).recursiveUnpack();
-    logger.log(`idle time: ${toTimeString(idleTime / 1000)}`);
+    logger.info(`idle time: ${toTimeString(idleTime / 1000)}`);
     const lastActiveTime = Math.floor((Date.now() - idleTime) / 1000);
     // Workaround for https://github.com/projecthamster/hamster/issues/775
     const endTime = lastActiveTime - new Date().getTimezoneOffset() * 60;
+    logger.log(
+      `stopping hamster activity tracking; user last active at ${lastActiveTime}`
+    );
     try {
       await this._hamsterProxy!.call(
         "StopTracking",
@@ -206,7 +224,7 @@ export default class IdleHamsterExtension extends Extension {
         null
       );
     } catch (e) {
-      logger.log(`error: ${e}`);
+      logger.error(`error: ${e}`);
     }
   }
 
@@ -236,6 +254,7 @@ export default class IdleHamsterExtension extends Extension {
       this._signals!.set(
         signalId,
         await connectSettingsKeyChangeSignal(
+          this.getLogger(),
           settings,
           key,
           this.updateSessionIdleDelay.bind(this)
@@ -275,10 +294,10 @@ export default class IdleHamsterExtension extends Extension {
       this._signals!.set(
         signalId,
         await connectProxySignal(
+          logger,
           this._screensaverProxy!,
           "ActiveChanged",
           async (active: boolean): Promise<void> => {
-            logger.log(`screensaver active: ${active}`);
             if (active) {
               this.stopTracking();
             }
@@ -294,27 +313,26 @@ export default class IdleHamsterExtension extends Extension {
   async connectIdleWatchSignal(idleTimeSec: number): Promise<SignalConnection> {
     const logger = this.getLogger();
     const idleTimeMs = idleTimeSec * 1000;
-    const watchId = await this._idleMonitorProxy!.call(
-      "AddIdleWatch",
+    const method = "AddIdleWatch";
+    const proxy = this._idleMonitorProxy!;
+    const watchId = await proxy.call(
+      method,
       new GLib.Variant("(t)", [idleTimeMs]),
       Gio.DBusCallFlags.NONE,
       -1,
       null
     );
-    logger.log(
-      `add idle watch for ${toTimeString(idleTimeSec)} with ID ${watchId}`
+    const watchIdStr = watchId.print(false);
+    logger.debug(
+      `${proxy.get_interface_name()}.${method}(${toTimeString(
+        idleTimeSec
+      )}) -> ${watchIdStr}`
     );
-    const proxy = this._idleMonitorProxy;
     return {
       async disconnect(): Promise<void> {
-        await proxy!.call(
-          "RemoveWatch",
-          watchId,
-          Gio.DBusCallFlags.NONE,
-          -1,
-          null
-        );
-        logger.log(`remove watch with ID ${watchId}`);
+        const method = "RemoveWatch";
+        await proxy.call(method, watchId, Gio.DBusCallFlags.NONE, -1, null);
+        logger.debug(`${proxy.get_interface_name()}.${method}(${watchIdStr})`);
       },
     };
   }
