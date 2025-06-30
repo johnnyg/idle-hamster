@@ -208,13 +208,17 @@ export default class IdleHamsterExtension extends Extension {
         null
       )
     ).recursiveUnpack();
+    const lastActiveTimeMillis = Date.now() - idleTime;
+    const lastActiveTimeSecs = Math.floor(lastActiveTimeMillis / 1000);
+    const lastActiveTimeString = new Date(
+      lastActiveTimeMillis
+    ).toLocaleTimeString();
     logger.info(`idle time: ${toTimeString(idleTime / 1000)}`);
-    const lastActiveTime = Math.floor((Date.now() - idleTime) / 1000);
-    // Workaround for https://github.com/projecthamster/hamster/issues/775
-    const endTime = lastActiveTime - new Date().getTimezoneOffset() * 60;
     logger.log(
-      `stopping hamster activity tracking; user last active at ${lastActiveTime}`
+      `stopping hamster activity tracking; user last active at ${lastActiveTimeString}`
     );
+    // Workaround for https://github.com/projecthamster/hamster/issues/775
+    const endTime = lastActiveTimeSecs - new Date().getTimezoneOffset() * 60;
     try {
       await this._hamsterProxy!.call(
         "StopTracking",
