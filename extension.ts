@@ -133,6 +133,29 @@ export default class IdleHamsterExtension extends Extension {
       "org.gnome.Hamster",
       null
     );
+    let hamsterVersion: string | undefined = undefined;
+    try {
+      hamsterVersion = (
+        await this._hamsterProxy!.call(
+          "Version",
+          null,
+          Gio.DBusCallFlags.NONE,
+          -1,
+          null
+        )
+      ).recursiveUnpack();
+    } catch (err) {
+      if (
+        err instanceof Gio.DBusError &&
+        err.code == Gio.DBusError.SERVICE_UNKNOWN
+      ) {
+        err = new Error(_("Unable to detect hamster, please make sure it is installed"), {
+          cause: err,
+        });
+      }
+      throw err;
+    }
+    logger.info(`detected hamster version ${hamsterVersion}`);
     this._idleMonitorProxy = await (
       Gio.DBusProxy.new_for_bus as GioDBusProxyNewForBus
     )(
@@ -228,7 +251,7 @@ export default class IdleHamsterExtension extends Extension {
         null
       );
     } catch (e) {
-      logger.error(`error: ${e}`);
+      logger.error(`failed to stop tracking hamster activity: ${e}`);
     }
   }
 
