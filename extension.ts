@@ -18,6 +18,8 @@
 
 import Gio from "gi://Gio";
 import GLib from "gi://GLib";
+import * as Main from "resource:///org/gnome/shell/ui/main.js";
+import * as MessageTray from "resource:///org/gnome/shell/ui/messageTray.js";
 
 import {
   Extension,
@@ -61,6 +63,7 @@ export default class IdleHamsterExtension extends Extension {
   _signals?: Map<Signal.ID, Signal.Connection>;
   _trackingActivityOnlySignals?: Set<Signal.ID>;
   _todaysLastFact?: Hamster.Fact;
+  _notificationSource?: MessageTray.Source;
 
   async enable(): Promise<void> {
     const logger = this.getLogger();
@@ -92,6 +95,22 @@ export default class IdleHamsterExtension extends Extension {
         err instanceof Gio.DBusError &&
         err.code == Gio.DBusError.SERVICE_UNKNOWN
       ) {
+        const source = this.getNotificationSource();
+        const notification = new MessageTray.Notification({
+          source: source,
+          title: _("Idle hamster error"),
+          body: _("Couldn't enable extension; please install hamster"),
+          gicon: new Gio.ThemedIcon({ name: "dialog-error" }),
+          iconName: "dialog-error",
+          urgency: MessageTray.Urgency.HIGH,
+        });
+        notification.addAction(_("Open hamster website"), (): void => {
+          Gio.AppInfo.launch_default_for_uri(
+            "https://github.com/projecthamster/hamster",
+            null
+          );
+        });
+        source.addNotification(notification);
         err = new Error(
           _("Unable to detect hamster, please make sure it is installed"),
           {
@@ -154,7 +173,27 @@ export default class IdleHamsterExtension extends Extension {
     this._idleMonitorProxy = undefined;
     this._screensaverProxy = undefined;
     this._hamsterProxy = undefined;
+    this._notificationSource = undefined;
     logger.debug("disabled");
+  }
+
+  getNotificationSource() {
+    if (this._notificationSource === undefined) {
+      const notificationPolicy = new MessageTray.NotificationGenericPolicy();
+      this._notificationSource = new MessageTray.Source({
+        title: _("Idle Hamster"),
+        icon: new Gio.ThemedIcon({ name: "dialog-information" }),
+        iconName: "dialog-information",
+        policy: notificationPolicy,
+      });
+
+      // Reset the notification source if it's destroyed
+      this._notificationSource.connect("destroy", (_source) => {
+        this._notificationSource = undefined;
+      });
+      Main.messageTray.add(this._notificationSource);
+    }
+    return this._notificationSource;
   }
 
   async addSignals(...signals: Signal.Connector[]): Promise<Set<Signal.ID>> {
