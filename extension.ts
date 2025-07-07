@@ -16,7 +16,6 @@
  * SPDX-License-Identifier: GPL-2.0-or-later
  */
 
-import { ConsoleLike } from "@girs/gnome-shell/extensions/extension";
 import Gio from "gi://Gio";
 import GLib from "gi://GLib";
 
@@ -24,6 +23,7 @@ import {
   Extension,
   gettext as _,
 } from "resource:///org/gnome/shell/extensions/extension.js";
+import * as Signal from "./signals.js";
 
 Gio._promisify(Gio.DBusProxy, "new_for_bus");
 Gio._promisify(Gio.DBusProxy.prototype, "call");
@@ -41,73 +41,6 @@ type GioDBusProxyNewForBus = (
   cancellable?: Gio.Cancellable | null
 ) => Promise<Gio.DBusProxy>;
 
-interface SignalConnection {
-  disconnect(): Promise<void>;
-}
-
-async function connectSettingsKeyChangeSignal<T>(
-  logger: ConsoleLike,
-  settings: Gio.Settings,
-  key: string,
-  callback: (value: T) => Promise<void>
-): Promise<SignalConnection> {
-  const handlerId = settings.connect(
-    `changed::${key}`,
-    async (settings: Gio.Settings, key: string): Promise<void> => {
-      const value: T = settings.get_value(key).recursiveUnpack();
-      logger.info(`changed ${settings.schema_id}.${key}=${value}`);
-      await callback(value);
-    }
-  );
-  logger.debug(
-    `connected to changes of ${settings.schemaId}.${key} with handler ID ${handlerId}`
-  );
-  // Need to always access a key after connecting for changes
-  await callback(settings!.get_value(key).recursiveUnpack());
-  return {
-    async disconnect(): Promise<void> {
-      settings.disconnect(handlerId);
-      logger.debug(
-        `disconnected from changes to ${settings.schemaId}.${key} with handler ID ${handlerId}`
-      );
-    },
-  };
-}
-
-async function connectProxySignal<T>(
-  logger: ConsoleLike,
-  proxy: Gio.DBusProxy,
-  signal: string,
-  callback: (value: T) => Promise<void>
-): Promise<SignalConnection> {
-  const handlerId = proxy.connect(
-    `g-signal::${signal}`,
-    async (
-      source: Gio.DBusProxy,
-      _senderName: string | null,
-      signalName: string,
-      parameters: GLib.Variant
-    ) => {
-      const value = parameters.recursiveUnpack();
-      logger.info(
-        `received signal ${signalName}=${value} from ${source.get_interface_name()}`
-      );
-      await callback(value);
-    }
-  );
-  logger.debug(
-    `connected to signal '${signal}' of ${proxy.get_interface_name()} with handler ID ${handlerId}`
-  );
-  return {
-    async disconnect(): Promise<void> {
-      proxy.disconnect(handlerId);
-      logger.debug(
-        `disconnected from signal '${signal}' of ${proxy.get_interface_name()} with handler ID ${handlerId}`
-      );
-    },
-  };
-}
-
 function toTimeString(sec: number): string {
   return `${Math.floor(sec / 60)} min ${Math.floor(sec % 60)} sec`;
 }
@@ -117,7 +50,7 @@ export default class IdleHamsterExtension extends Extension {
   _idleMonitorProxy?: Gio.DBusProxy;
   _screensaverProxy?: Gio.DBusProxy;
   _settings?: Gio.Settings;
-  _signals?: Map<string, SignalConnection>;
+  _signals?: Map<string, Signal.Connection>;
 
   async enable(): Promise<void> {
     const logger = this.getLogger();
@@ -149,9 +82,12 @@ export default class IdleHamsterExtension extends Extension {
         err instanceof Gio.DBusError &&
         err.code == Gio.DBusError.SERVICE_UNKNOWN
       ) {
-        err = new Error(_("Unable to detect hamster, please make sure it is installed"), {
-          cause: err,
-        });
+        err = new Error(
+          _("Unable to detect hamster, please make sure it is installed"),
+          {
+            cause: err,
+          }
+        );
       }
       throw err;
     }
@@ -167,38 +103,38 @@ export default class IdleHamsterExtension extends Extension {
       "org.gnome.Mutter.IdleMonitor",
       null
     );
+    this._screensaverProxy = await (
+      Gio.DBusProxy.new_for_bus as GioDBusProxyNewForBus
+    )(
+      Gio.BusType.SESSION,
+      Gio.DBusProxyFlags.NONE,
+      null,
+      "org.gnome.ScreenSaver",
+      "/org/gnome/ScreenSaver",
+      "org.gnome.ScreenSaver",
+      null
+    );
     this._settings = this.getSettings();
-    this._signals = new Map();
-    this._signals!.set(
-      "watchFired",
-      await connectProxySignal(
+    await this.addSignals(
+      Signal.forProxySignal(
         logger,
-        this._idleMonitorProxy,
+        this._idleMonitorProxy!,
         "WatchFired",
         this.stopTracking.bind(this)
-      )
-    );
-    this._signals!.set(
-      "useSessionIdleDelay",
-      await connectSettingsKeyChangeSignal(
+      ),
+      Signal.forSettingsKeyChange(
         logger,
         this._settings,
         "use-session-idle-delay",
         this.updateSessionIdleSync.bind(this)
-      )
-    );
-    this._signals!.set(
-      "idleDelay",
-      await connectSettingsKeyChangeSignal(
+      ),
+      Signal.forSettingsKeyChange(
         logger,
         this._settings,
         "idle-delay",
         this.updateIdleWatchSignal.bind(this)
-      )
-    );
-    this._signals!.set(
-      "stopOnLock",
-      await connectSettingsKeyChangeSignal(
+      ),
+      Signal.forSettingsKeyChange(
         logger,
         this._settings,
         "stop-on-lock",
@@ -210,7 +146,7 @@ export default class IdleHamsterExtension extends Extension {
   async disable(): Promise<void> {
     const logger = this.getLogger();
     for (let [_signalId, signal] of this._signals ?? []) {
-      signal?.disconnect();
+      await signal?.disconnect();
     }
     this._signals?.clear();
     this._settings = undefined;
@@ -218,6 +154,23 @@ export default class IdleHamsterExtension extends Extension {
     this._screensaverProxy = undefined;
     this._hamsterProxy = undefined;
     logger.debug("disabled");
+  }
+
+  async addSignals(...signals: Signal.Connector[]): Promise<void> {
+    if (this._signals === undefined) {
+      this._signals = new Map();
+    }
+    for (let signal of signals) {
+      await this._signals?.get(signal.id)?.disconnect();
+      this._signals.set(signal.id, await signal.connect());
+    }
+  }
+
+  async removeSignals(...signals: Signal.Connector[]): Promise<void> {
+    for (let signal of signals) {
+      await this._signals?.get(signal.id)?.disconnect();
+      this._signals?.delete(signal.id);
+    }
   }
 
   async stopTracking(): Promise<void> {
@@ -272,95 +225,46 @@ export default class IdleHamsterExtension extends Extension {
   }
 
   async updateSessionIdleSync(useSessionIdleDelay: boolean): Promise<void> {
-    const schema = "org.gnome.desktop.session";
-    const settings = this.getSettings(schema);
-    const key = "idle-delay";
-    const signalId = "sessionIdleDelay";
-    this._signals!.get(signalId)?.disconnect();
+    const signal = Signal.forSettingsKeyChange(
+      this.getLogger(),
+      this.getSettings("org.gnome.desktop.session"),
+      "idle-delay",
+      this.updateSessionIdleDelay.bind(this)
+    );
     if (useSessionIdleDelay) {
-      this._signals!.set(
-        signalId,
-        await connectSettingsKeyChangeSignal(
-          this.getLogger(),
-          settings,
-          key,
-          this.updateSessionIdleDelay.bind(this)
-        )
-      );
+      await this.addSignals(signal);
     } else {
-      this._signals!.delete(signalId);
+      await this.removeSignals(signal);
     }
   }
 
   async updateIdleWatchSignal(idleTimeSec: number): Promise<void> {
-    this._signals!.get("idleWatch")?.disconnect();
-    this._signals!.set(
-      "idleWatch",
-      await this.connectIdleWatchSignal(idleTimeSec)
+    await this.addSignals(
+      Signal.forProxyCall(
+        this.getLogger(),
+        this._idleMonitorProxy!,
+        "AddIdleWatch",
+        "RemoveWatch",
+        new GLib.Variant("(t)", [idleTimeSec * 1000])
+      )
     );
   }
 
   async updateStopOnLock(stopOnLock: boolean): Promise<void> {
-    const logger = this.getLogger();
-    const signalId = "activeChanged";
-    this._signals!.get(signalId)?.disconnect();
-    if (stopOnLock) {
-      if (this._screensaverProxy === undefined) {
-        this._screensaverProxy = await (
-          Gio.DBusProxy.new_for_bus as GioDBusProxyNewForBus
-        )(
-          Gio.BusType.SESSION,
-          Gio.DBusProxyFlags.NONE,
-          null,
-          "org.gnome.ScreenSaver",
-          "/org/gnome/ScreenSaver",
-          "org.gnome.ScreenSaver",
-          null
-        );
+    const signal = Signal.forProxySignal(
+      this.getLogger(),
+      this._screensaverProxy!,
+      "ActiveChanged",
+      async (active: boolean): Promise<void> => {
+        if (active) {
+          await this.stopTracking();
+        }
       }
-      this._signals!.set(
-        signalId,
-        await connectProxySignal(
-          logger,
-          this._screensaverProxy!,
-          "ActiveChanged",
-          async (active: boolean): Promise<void> => {
-            if (active) {
-              this.stopTracking();
-            }
-          }
-        )
-      );
+    );
+    if (stopOnLock) {
+      await this.addSignals(signal);
     } else {
-      this._signals!.delete(signalId);
-      this._screensaverProxy = undefined;
+      await this.removeSignals(signal);
     }
-  }
-
-  async connectIdleWatchSignal(idleTimeSec: number): Promise<SignalConnection> {
-    const logger = this.getLogger();
-    const idleTimeMs = idleTimeSec * 1000;
-    const method = "AddIdleWatch";
-    const proxy = this._idleMonitorProxy!;
-    const watchId = await proxy.call(
-      method,
-      new GLib.Variant("(t)", [idleTimeMs]),
-      Gio.DBusCallFlags.NONE,
-      -1,
-      null
-    );
-    const watchIdStr = watchId.print(false);
-    logger.debug(
-      `${proxy.get_interface_name()}.${method}(${toTimeString(
-        idleTimeSec
-      )}) -> ${watchIdStr}`
-    );
-    return {
-      async disconnect(): Promise<void> {
-        const method = "RemoveWatch";
-        await proxy.call(method, watchId, Gio.DBusCallFlags.NONE, -1, null);
-        logger.debug(`${proxy.get_interface_name()}.${method}(${watchIdStr})`);
-      },
-    };
   }
 }

@@ -10,14 +10,14 @@ all: dist/extension.js
 node_modules: package.json
 	@npm install
 
-dist/extension.js dist/prefs.js: node_modules extension.ts prefs.ts
+dist/extension.js dist/prefs.js dist/signals.js: node_modules extension.ts prefs.ts signals.ts
 	@tsc
 
 test-schema: $(SCHEMA_FILENAME)
 	@glib-compile-schemas --strict --dry-run schemas
 
-$(BUNDLE_FILENAME): metadata.json dist/extension.js dist/prefs.js $(SCHEMA_FILENAME) test-schema
-	@gnome-extensions pack --extra-source=dist/extension.js --extra-source=dist/prefs.js --force
+$(BUNDLE_FILENAME): metadata.json dist/extension.js dist/prefs.js dist/signals.js $(SCHEMA_FILENAME) test-schema
+	@gnome-extensions pack --extra-source=dist/extension.js --extra-source=dist/prefs.js --extra-source=dist/signals.js --force
 
 pack: $(BUNDLE_FILENAME)
 
