@@ -6,8 +6,10 @@ export interface Connection {
   disconnect(): Promise<void>;
 }
 
+export type ID = string;
+
 export interface Connector {
-  id: string;
+  id: ID;
   connect(): Promise<Connection>;
 }
 

@@ -11,7 +11,8 @@
     ]
   },
   "include": [
-    "ambient.d.ts"
+    "ambient.d.ts",
+    "hamster.d.ts"
   ],
   "files": [
     "extension.ts",

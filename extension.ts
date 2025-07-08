@@ -25,6 +25,8 @@ import {
 } from "resource:///org/gnome/shell/extensions/extension.js";
 import * as Signal from "./signals.js";
 
+import * as Hamster from "hamster";
+
 Gio._promisify(Gio.DBusProxy, "new_for_bus");
 Gio._promisify(Gio.DBusProxy.prototype, "call");
 
@@ -41,8 +43,14 @@ type GioDBusProxyNewForBus = (
   cancellable?: Gio.Cancellable | null
 ) => Promise<Gio.DBusProxy>;
 
+type StopTrackingReason = "idleness" | "screen lock";
+
 function toTimeString(sec: number): string {
   return `${Math.floor(sec / 60)} min ${Math.floor(sec % 60)} sec`;
+}
+
+function isTrackingActivity(fact?: Hamster.Fact): boolean {
+  return fact?.range.end === null;
 }
 
 export default class IdleHamsterExtension extends Extension {
@@ -50,7 +58,9 @@ export default class IdleHamsterExtension extends Extension {
   _idleMonitorProxy?: Gio.DBusProxy;
   _screensaverProxy?: Gio.DBusProxy;
   _settings?: Gio.Settings;
-  _signals?: Map<string, Signal.Connection>;
+  _signals?: Map<Signal.ID, Signal.Connection>;
+  _trackingActivityOnlySignals?: Set<Signal.ID>;
+  _todaysLastFact?: Hamster.Fact;
 
   async enable(): Promise<void> {
     const logger = this.getLogger();
@@ -118,37 +128,28 @@ export default class IdleHamsterExtension extends Extension {
     await this.addSignals(
       Signal.forProxySignal(
         logger,
-        this._idleMonitorProxy!,
-        "WatchFired",
-        this.stopTracking.bind(this)
+        this._hamsterProxy,
+        "FactsChanged",
+        this.checkIfTrackingActivity.bind(this)
       ),
       Signal.forSettingsKeyChange(
         logger,
         this._settings,
         "use-session-idle-delay",
         this.updateSessionIdleSync.bind(this)
-      ),
-      Signal.forSettingsKeyChange(
-        logger,
-        this._settings,
-        "idle-delay",
-        this.updateIdleWatchSignal.bind(this)
-      ),
-      Signal.forSettingsKeyChange(
-        logger,
-        this._settings,
-        "stop-on-lock",
-        this.updateStopOnLock.bind(this)
       )
     );
+    await this.checkIfTrackingActivity();
   }
 
   async disable(): Promise<void> {
     const logger = this.getLogger();
+    this._todaysLastFact = undefined;
     for (let [_signalId, signal] of this._signals ?? []) {
       await signal?.disconnect();
     }
     this._signals?.clear();
+    this._trackingActivityOnlySignals?.clear();
     this._settings = undefined;
     this._idleMonitorProxy = undefined;
     this._screensaverProxy = undefined;
@@ -156,14 +157,17 @@ export default class IdleHamsterExtension extends Extension {
     logger.debug("disabled");
   }
 
-  async addSignals(...signals: Signal.Connector[]): Promise<void> {
+  async addSignals(...signals: Signal.Connector[]): Promise<Set<Signal.ID>> {
     if (this._signals === undefined) {
       this._signals = new Map();
     }
+    const addedSignalIDs = new Set<Signal.ID>();
     for (let signal of signals) {
       await this._signals?.get(signal.id)?.disconnect();
       this._signals.set(signal.id, await signal.connect());
+      addedSignalIDs.add(signal.id);
     }
+    return addedSignalIDs;
   }
 
   async removeSignals(...signals: Signal.Connector[]): Promise<void> {
@@ -173,7 +177,79 @@ export default class IdleHamsterExtension extends Extension {
     }
   }
 
-  async stopTracking(): Promise<void> {
+  updateTrackingActivityOnlySignals(signalIDs: Set<Signal.ID>): void {
+    this._trackingActivityOnlySignals = new Set([
+      ...(this._trackingActivityOnlySignals ?? []),
+      ...signalIDs,
+    ]);
+  }
+
+  async removeTrackingActivityOnlySignals(): Promise<void> {
+    for (let signalID of this._trackingActivityOnlySignals ?? []) {
+      await this._signals?.get(signalID)?.disconnect();
+      this._signals?.delete(signalID);
+    }
+    this._trackingActivityOnlySignals?.clear();
+  }
+
+  async getTodaysLastFact(): Promise<Hamster.Fact | undefined> {
+    const logger = this.getLogger();
+    let lastFact: Hamster.Fact | undefined = undefined;
+    try {
+      const [factsJSON]: string[][] = (
+        await this._hamsterProxy!.call(
+          "GetTodaysFactsJSON",
+          null,
+          Gio.DBusCallFlags.NONE,
+          -1,
+          null
+        )
+      ).recursiveUnpack();
+      const lastFactJSON = factsJSON?.at(-1);
+      logger.debug(`today's last fact JSON: '${lastFactJSON}'`);
+      if (lastFactJSON) {
+        lastFact = JSON.parse(lastFactJSON) as Hamster.Fact;
+      }
+    } catch (e) {
+      logger.error(`error getting today's facts: ${e}`);
+    }
+    return lastFact;
+  }
+
+  async checkIfTrackingActivity(): Promise<void> {
+    const logger = this.getLogger();
+    const wasTracking = isTrackingActivity(this._todaysLastFact);
+    this._todaysLastFact = await this.getTodaysLastFact();
+    const isTracking = isTrackingActivity(this._todaysLastFact);
+    if (!wasTracking && isTracking) {
+      this.updateTrackingActivityOnlySignals(
+        await this.addSignals(
+          Signal.forProxySignal(
+            logger,
+            this._idleMonitorProxy!,
+            "WatchFired",
+            this.stopTracking.bind(this, "idleness")
+          ),
+          Signal.forSettingsKeyChange(
+            logger,
+            this._settings!,
+            "idle-delay",
+            this.updateIdleWatchSignal.bind(this)
+          ),
+          Signal.forSettingsKeyChange(
+            logger,
+            this._settings!,
+            "stop-on-lock",
+            this.updateStopOnLock.bind(this)
+          )
+        )
+      );
+    } else if (wasTracking && !isTracking) {
+      await this.removeTrackingActivityOnlySignals();
+    }
+  }
+
+  async stopTracking(reason: StopTrackingReason): Promise<void> {
     const logger = this.getLogger();
     const [idleTime] = (
       await this._idleMonitorProxy!.call(
@@ -186,13 +262,17 @@ export default class IdleHamsterExtension extends Extension {
     ).recursiveUnpack();
     const lastActiveTimeMillis = Date.now() - idleTime;
     const lastActiveTimeSecs = Math.floor(lastActiveTimeMillis / 1000);
-    const lastActiveTimeString = new Date(
-      lastActiveTimeMillis
-    ).toLocaleTimeString();
-    logger.info(`idle time: ${toTimeString(idleTime / 1000)}`);
-    logger.log(
-      `stopping hamster activity tracking; user last active at ${lastActiveTimeString}`
-    );
+    let stopMsg = `stopping hamster activity tracking of '${
+      this._todaysLastFact!.activity
+    }' due to ${reason}`;
+    if (reason == "idleness") {
+      logger.info(`idle time: ${toTimeString(idleTime / 1000)}`);
+      const lastActiveTimeString = new Date(
+        lastActiveTimeMillis
+      ).toLocaleTimeString();
+      stopMsg += `; user last active at ${lastActiveTimeString}`;
+    }
+    logger.log(stopMsg);
     // Workaround for https://github.com/projecthamster/hamster/issues/775
     const endTime = lastActiveTimeSecs - new Date().getTimezoneOffset() * 60;
     try {
@@ -239,13 +319,15 @@ export default class IdleHamsterExtension extends Extension {
   }
 
   async updateIdleWatchSignal(idleTimeSec: number): Promise<void> {
-    await this.addSignals(
-      Signal.forProxyCall(
-        this.getLogger(),
-        this._idleMonitorProxy!,
-        "AddIdleWatch",
-        "RemoveWatch",
-        new GLib.Variant("(t)", [idleTimeSec * 1000])
+    this.updateTrackingActivityOnlySignals(
+      await this.addSignals(
+        Signal.forProxyCall(
+          this.getLogger(),
+          this._idleMonitorProxy!,
+          "AddIdleWatch",
+          "RemoveWatch",
+          new GLib.Variant("(t)", [idleTimeSec * 1000])
+        )
       )
     );
   }
@@ -257,12 +339,12 @@ export default class IdleHamsterExtension extends Extension {
       "ActiveChanged",
       async (active: boolean): Promise<void> => {
         if (active) {
-          await this.stopTracking();
+          await this.stopTracking("screen lock");
         }
       }
     );
     if (stopOnLock) {
-      await this.addSignals(signal);
+      this.updateTrackingActivityOnlySignals(await this.addSignals(signal));
     } else {
       await this.removeSignals(signal);
     }
