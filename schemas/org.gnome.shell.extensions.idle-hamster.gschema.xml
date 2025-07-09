@@ -2,9 +2,10 @@
 <schemalist>
   <schema id="org.gnome.shell.extensions.idle-hamster" path="/org/gnome/shell/extensions/idle-hamster/">
     <key name="idle-delay" type="q">
-      <default>10</default>
+      <range min="1" max="60000"/>
+      <default>600</default>
       <summary>Idle delay</summary>
-      <description>The duration in minutes before we are considered idle and should stop tracking activities</description>
+      <description>The duration in seconds before we are considered idle and should stop tracking activities</description>
     </key>
     <key name="use-session-idle-delay" type="b">
       <default>false</default>
