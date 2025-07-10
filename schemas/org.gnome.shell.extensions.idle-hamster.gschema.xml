@@ -17,5 +17,10 @@
       <summary>Stop tracking activity when screen is locked</summary>
       <description>Whether to stop tracking an activity when the screen is locked</description>
     </key>
+    <key name="notify-on-stop" type="b">
+      <default>true</default>
+      <summary>Show notification when we stop tracking an activity</summary>
+      <description>Whether to show a notification or not when we stop tracking an activity</description>
+    </key>
   </schema>
 </schemalist>

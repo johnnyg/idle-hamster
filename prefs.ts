@@ -109,25 +109,37 @@ export default class IdleHamsterPreferences extends ExtensionPreferences {
     });
     idleGroup.add(idleDelay);
 
-    const otherStopEvents = new Adw.PreferencesGroup({
-      title: _("Other stop events"),
-      description: _(
-        "Configure whether we stop tracking based on other events"
-      ),
-    });
-    page.add(otherStopEvents);
-
-    const stopOnLock = new Adw.SwitchRow({
-      title: _("Stop tracking activity on screen lock"),
-      subtitle: _("Stop tracking on screen lock regardless of idle time"),
-    });
-    otherStopEvents.add(stopOnLock);
-
     const useSessionIdleDelay = new Adw.SwitchRow({
       title: _("Use screen lock idle duration"),
       subtitle: _("Use the same idle time as the screen lock"),
     });
     idleGroup.add(useSessionIdleDelay);
+
+    const otherStopEventsGroup = new Adw.PreferencesGroup({
+      title: _("Other stop events"),
+      description: _(
+        "Configure whether we stop tracking based on other events"
+      ),
+    });
+    page.add(otherStopEventsGroup);
+
+    const stopOnLock = new Adw.SwitchRow({
+      title: _("Stop tracking activity on screen lock"),
+      subtitle: _("Stop tracking on screen lock regardless of idle time"),
+    });
+    otherStopEventsGroup.add(stopOnLock);
+
+    const notificationsGroup = new Adw.PreferencesGroup({
+      title: _("Notifications"),
+      description: _("Configure which notifications to show"),
+    });
+    page.add(notificationsGroup);
+
+    const notifyOnStop = new Adw.SwitchRow({
+      title: _("Notify when stop tracking an activity"),
+      subtitle: _("Show a notification when we stop tracking activity"),
+    });
+    notificationsGroup.add(notifyOnStop);
 
     useSessionIdleDelay.bind_property(
       "active",
@@ -172,6 +184,13 @@ export default class IdleHamsterPreferences extends ExtensionPreferences {
     this._settings!.bind(
       "stop-on-lock",
       stopOnLock,
+      "active",
+      Gio.SettingsBindFlags.DEFAULT
+    );
+
+    this._settings!.bind(
+      "notify-on-stop",
+      notifyOnStop,
       "active",
       Gio.SettingsBindFlags.DEFAULT
     );

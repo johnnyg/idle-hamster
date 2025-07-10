@@ -64,6 +64,7 @@ export default class IdleHamsterExtension extends Extension {
   _trackingActivityOnlySignals?: Set<Signal.ID>;
   _todaysLastFact?: Hamster.Fact;
   _notificationSource?: MessageTray.Source;
+  _notifyOnStop?: boolean;
 
   async enable(): Promise<void> {
     const logger = this.getLogger();
@@ -174,6 +175,7 @@ export default class IdleHamsterExtension extends Extension {
     this._screensaverProxy = undefined;
     this._hamsterProxy = undefined;
     this._notificationSource = undefined;
+    this._notifyOnStop = undefined;
     logger.debug("disabled");
   }
 
@@ -280,6 +282,12 @@ export default class IdleHamsterExtension extends Extension {
             this._settings!,
             "stop-on-lock",
             this.updateStopOnLock.bind(this)
+          ),
+          Signal.forSettingsKeyChange(
+            logger,
+            this._settings!,
+            "notify-on-stop",
+            this.updateNotifyOnStop.bind(this)
           )
         )
       );
@@ -301,14 +309,13 @@ export default class IdleHamsterExtension extends Extension {
     ).recursiveUnpack();
     const lastActiveTimeMillis = Date.now() - idleTime;
     const lastActiveTimeSecs = Math.floor(lastActiveTimeMillis / 1000);
-    let stopMsg = `stopping hamster activity tracking of '${
-      this._todaysLastFact!.activity
-    }' due to ${reason}`;
+    const lastActiveTimeString = new Date(
+      lastActiveTimeMillis
+    ).toLocaleTimeString();
+    const activity = this._todaysLastFact!.activity;
+    let stopMsg = `stopping hamster activity tracking of '${activity}' due to ${reason}`;
     if (reason == "idleness") {
       logger.info(`idle time: ${toTimeString(idleTime / 1000)}`);
-      const lastActiveTimeString = new Date(
-        lastActiveTimeMillis
-      ).toLocaleTimeString();
       stopMsg += `; user last active at ${lastActiveTimeString}`;
     }
     logger.log(stopMsg);
@@ -324,6 +331,37 @@ export default class IdleHamsterExtension extends Extension {
       );
     } catch (e) {
       logger.error(`failed to stop tracking hamster activity: ${e}`);
+    }
+    if (this._notifyOnStop) {
+      const source = this.getNotificationSource();
+      const notification = new MessageTray.Notification({
+        source: source,
+        title: `Stopped tracking '${activity}'`,
+        body: `end time was set to ${lastActiveTimeString} due to ${reason}`,
+        gicon: new Gio.ThemedIcon({ name: "dialog-information" }),
+        iconName: "dialog-information",
+        urgency: MessageTray.Urgency.NORMAL,
+      });
+      notification.addAction(_("open preferences"), (): void => {
+        this.openPreferences();
+      });
+      notification.addAction(
+        _("resume tracking activity"),
+        async (): Promise<void> => {
+          try {
+            await this._hamsterProxy!.call(
+              "StopOrRestartTracking",
+              null,
+              Gio.DBusCallFlags.NONE,
+              -1,
+              null
+            );
+          } catch (e) {
+            logger.error(`failed to resume tracking hamster activity: ${e}`);
+          }
+        }
+      );
+      source.addNotification(notification);
     }
   }
 
@@ -387,5 +425,13 @@ export default class IdleHamsterExtension extends Extension {
     } else {
       await this.removeSignals(signal);
     }
+  }
+
+  async updateNotifyOnStop(notifyOnStop: boolean): Promise<void> {
+    const logger = this.getLogger();
+    logger.debug(
+      `show notifications on stopping activity tracking? ${notifyOnStop}`
+    );
+    this._notifyOnStop = notifyOnStop;
   }
 }
