@@ -21,11 +21,9 @@ import GLib from "gi://GLib";
 import * as Main from "resource:///org/gnome/shell/ui/main.js";
 import * as MessageTray from "resource:///org/gnome/shell/ui/messageTray.js";
 
-import {
-  Extension,
-  gettext as _,
-} from "resource:///org/gnome/shell/extensions/extension.js";
+import { Extension } from "resource:///org/gnome/shell/extensions/extension.js";
 import * as Signal from "./signals.js";
+import { gettext as _ } from "./gettext.js";
 
 import * as Hamster from "hamster";
 
@@ -336,8 +334,8 @@ export default class IdleHamsterExtension extends Extension {
       const source = this.getNotificationSource();
       const notification = new MessageTray.Notification({
         source: source,
-        title: `Stopped tracking '${activity}'`,
-        body: `end time was set to ${lastActiveTimeString} due to ${reason}`,
+        title: _`Stopped tracking '${activity}'`,
+        body: _`end time was set to ${lastActiveTimeString} due to ${reason}`,
         gicon: new Gio.ThemedIcon({ name: "dialog-information" }),
         iconName: "dialog-information",
         urgency: MessageTray.Urgency.NORMAL,

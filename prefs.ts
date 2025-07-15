@@ -3,10 +3,8 @@ import Adw from "gi://Adw";
 import Gio from "gi://Gio";
 import GObject from "gi://GObject";
 import GLib from "gi://GLib";
-import {
-  ExtensionPreferences,
-  gettext as _,
-} from "resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js";
+import { ExtensionPreferences } from "resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js";
+import { gettext as _ } from "./gettext.js";
 
 // Wrapper for `Gio.Settings.bind_with_mapping` to work around
 // it not fully working in GJS, see: https://gitlab.gnome.org/GNOME/gjs/-/issues/397`
