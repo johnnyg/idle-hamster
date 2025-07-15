@@ -1,23 +1,26 @@
-UUID=$(shell jq -r .uuid metadata.json)
-SCHEMA_NAME=$(shell jq -r '."settings-schema"' metadata.json)
-BUNDLE_FILENAME=$(UUID).shell-extension.zip
-SCHEMA_FILENAME=schemas/$(SCHEMA_NAME).gschema.xml
+UUID := $(shell jq -r .uuid metadata.json)
+SCHEMA_NAME := $(shell jq -r '."settings-schema"' metadata.json)
+BUNDLE_FILENAME := $(UUID).shell-extension.zip
+SCHEMA_FILENAME := schemas/$(SCHEMA_NAME).gschema.xml
+TS_FILES := $(filter-out %.d.ts,$(wildcard *.ts))
+JS_FILES := $(TS_FILES:%.ts=dist/%.js)
+JS_FILENAMES := $(JS_FILES:dist/%.js=%.js)
 
 .PHONY: all pack install clean test-schema test-nested
 
-all: dist/extension.js
+all: $(JS_FILES)
 
 node_modules: package.json
 	@npm install
 
-dist/extension.js dist/prefs.js dist/signals.js: node_modules extension.ts prefs.ts signals.ts
+$(JS_FILES): node_modules $(TS_FILES)
 	@tsc
 
 test-schema: $(SCHEMA_FILENAME)
 	@glib-compile-schemas --strict --dry-run schemas
 
-$(BUNDLE_FILENAME): metadata.json dist/extension.js dist/prefs.js dist/signals.js $(SCHEMA_FILENAME) test-schema
-	@gnome-extensions pack --extra-source=dist/extension.js --extra-source=dist/prefs.js --extra-source=dist/signals.js --force
+$(BUNDLE_FILENAME): metadata.json $(JS_FILES) $(SCHEMA_FILENAME) test-schema
+	@gnome-extensions pack $(JS_FILES:%=--extra-source=%) --force
 
 pack: $(BUNDLE_FILENAME)
 
