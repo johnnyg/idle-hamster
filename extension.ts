@@ -334,7 +334,7 @@ export default class IdleHamsterExtension extends Extension {
       const source = this.getNotificationSource();
       const notification = new MessageTray.Notification({
         source: source,
-        title: _`Stopped tracking '${activity}'`,
+        title: _`Stopped tracking activity '${activity}'`,
         body: _`end time was set to ${lastActiveTimeString} due to ${reason}`,
         gicon: new Gio.ThemedIcon({ name: "dialog-information" }),
         iconName: "dialog-information",
