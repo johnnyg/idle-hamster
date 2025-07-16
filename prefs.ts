@@ -80,10 +80,45 @@ function bind_with_mapping<T extends GObject.Object, K extends keyof T>(
 export default class IdleHamsterPreferences extends ExtensionPreferences {
   _settings?: Gio.Settings;
   _sessionSettings?: Gio.Settings;
+  _stopOnSuspendEnumToIndex?: Map<string, number>;
+  _stopOnSuspendIndexToEnum?: string[];
+  _stopOnSuspendEnumToLabel?: Map<string, string>;
+
+  constructor(metadata: any) {
+    super(metadata);
+    this._settings = this.getSettings();
+    this._sessionSettings = this.getSettings("org.gnome.desktop.session");
+    const [stopOnSuspendRangeType, stopOnSuspendRangeValues] =
+      this._settings!.settingsSchema.get_key("stop-on-suspend")
+        .get_range()
+        .recursiveUnpack();
+    if (stopOnSuspendRangeType != "enum") {
+      throw `Unexpected range value for stop-on-suspend: ${stopOnSuspendRangeType}`;
+    }
+    this._stopOnSuspendIndexToEnum = stopOnSuspendRangeValues;
+    this._stopOnSuspendEnumToIndex = new Map(
+      this._stopOnSuspendIndexToEnum!.map((choice: string, index: number) => [
+        choice,
+        index,
+      ])
+    );
+    this._stopOnSuspendEnumToLabel = new Map([
+      ["never", _("Never")],
+      ["idle", _("If Idle")],
+      ["always", _("Always")],
+    ]);
+    if (
+      !this._stopOnSuspendIndexToEnum?.every((value) =>
+        this._stopOnSuspendEnumToLabel?.has(value)
+      )
+    ) {
+      throw `Mismatch between settings ${
+        this._stopOnSuspendIndexToEnum
+      } and prefs ${this._stopOnSuspendEnumToLabel.keys()}`;
+    }
+  }
 
   async fillPreferencesWindow(window: Adw.PreferencesWindow): Promise<void> {
-    this._settings = this.getSettings();
-
     const page = new Adw.PreferencesPage({
       title: _("General"),
       iconName: "dialog-information-symbolic",
@@ -127,6 +162,23 @@ export default class IdleHamsterPreferences extends ExtensionPreferences {
     });
     otherStopEventsGroup.add(stopOnLock);
 
+    const stopOnSuspend = new Adw.ComboRow({
+      title: _("Stop tracking activity on suspend"),
+      subtitle: _("Stop tracking when machine is suspended"),
+      model: new Gtk.StringList({
+        strings: this._stopOnSuspendIndexToEnum?.map(
+          (choice: string) => this._stopOnSuspendEnumToLabel!.get(choice)!
+        ),
+      }),
+    });
+    otherStopEventsGroup.add(stopOnSuspend);
+
+    const stopOnShutdown = new Adw.SwitchRow({
+      title: _("Stop tracking activity on shutdown"),
+      subtitle: _("Stop tracking when machine is shutdown"),
+    });
+    otherStopEventsGroup.add(stopOnShutdown);
+
     const notificationsGroup = new Adw.PreferencesGroup({
       title: _("Notifications"),
       description: _("Configure which notifications to show"),
@@ -156,7 +208,7 @@ export default class IdleHamsterPreferences extends ExtensionPreferences {
     );
 
     bind_with_mapping(
-      this._settings,
+      this._settings!,
       "idle-delay",
       idleDelay,
       "value",
@@ -168,9 +220,8 @@ export default class IdleHamsterPreferences extends ExtensionPreferences {
         GLib.Variant.new_uint16(value * 60)
     );
 
-    this._sessionSettings = this.getSettings("org.gnome.desktop.session");
     bind_with_mapping(
-      this._sessionSettings,
+      this._sessionSettings!,
       "idle-delay",
       useSessionIdleDelay,
       "sensitive",
@@ -182,6 +233,43 @@ export default class IdleHamsterPreferences extends ExtensionPreferences {
     this._settings!.bind(
       "stop-on-lock",
       stopOnLock,
+      "active",
+      Gio.SettingsBindFlags.DEFAULT
+    );
+
+    const logger = this.getLogger();
+
+    bind_with_mapping(
+      this._settings!,
+      "stop-on-suspend",
+      stopOnSuspend,
+      "selected",
+      Adw.ComboRow,
+      Gio.SettingsBindFlags.DEFAULT,
+      (variant: GLib.Variant): number | null => {
+        const [choice, _] = variant.get_string();
+        const index = this._stopOnSuspendEnumToIndex!.get(choice)!;
+        logger.log(`${choice} -> ${index}`);
+        return index;
+      },
+      (index: number, _: GLib.VariantType): GLib.Variant => {
+        const choice = GLib.Variant.new_string(
+          this._stopOnSuspendIndexToEnum![index]
+        );
+        logger.log(`${index} -> ${choice.print(true)}`);
+        return choice;
+      }
+    );
+    this._settings!.bind(
+      "stop-on-shutdown",
+      stopOnShutdown,
+      "active",
+      Gio.SettingsBindFlags.DEFAULT
+    );
+
+    this._settings!.bind(
+      "stop-on-shutdown",
+      stopOnShutdown,
       "active",
       Gio.SettingsBindFlags.DEFAULT
     );

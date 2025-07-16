@@ -17,6 +17,21 @@
       <summary>Stop tracking activity when screen is locked</summary>
       <description>Whether to stop tracking an activity when the screen is locked</description>
     </key>
+    <key name="stop-on-suspend" type="s">
+      <summary>Stop tracking activity when machine is suspended</summary>
+      <description>Whether to stop tracking an activity when the machine is suspended</description>
+      <choices>
+        <choice value="never"/>
+        <choice value="idle"/>
+        <choice value="always"/>
+      </choices>
+      <default>"never"</default>
+    </key>
+    <key name="stop-on-shutdown" type="b">
+      <default>false</default>
+      <summary>Stop tracking activity when machine is shutdown</summary>
+      <description>Whether to stop tracking an activity when the machine is shutdown</description>
+    </key>
     <key name="notify-on-stop" type="b">
       <default>true</default>
       <summary>Show notification when we stop tracking an activity</summary>

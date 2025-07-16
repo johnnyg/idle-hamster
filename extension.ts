@@ -43,9 +43,11 @@ type GioDBusProxyNewForBus = (
   cancellable?: Gio.Cancellable | null
 ) => Promise<Gio.DBusProxy>;
 
-type StopTrackingReason = "idleness" | "screen lock";
+type StopTrackingReason = "idleness" | "screen lock" | "suspend" | "shutdown";
+type StopOnSuspendChoices = "never" | "idle" | "always";
 
-function toTimeString(sec: number): string {
+function toTimeString(millisec: number): string {
+  const sec = millisec / 1000;
   return `${Math.floor(sec / 60)} min ${Math.floor(sec % 60)} sec`;
 }
 
@@ -57,12 +59,14 @@ export default class IdleHamsterExtension extends Extension {
   _hamsterProxy?: Gio.DBusProxy;
   _idleMonitorProxy?: Gio.DBusProxy;
   _screensaverProxy?: Gio.DBusProxy;
+  _loginManagerProxy?: Gio.DBusProxy;
   _settings?: Gio.Settings;
   _signals?: Map<Signal.ID, Signal.Connection>;
   _trackingActivityOnlySignals?: Set<Signal.ID>;
   _todaysLastFact?: Hamster.Fact;
   _notificationSource?: MessageTray.Source;
   _notifyOnStop?: boolean;
+  _suspendTime?: Date;
 
   async enable(): Promise<void> {
     const logger = this.getLogger();
@@ -142,6 +146,17 @@ export default class IdleHamsterExtension extends Extension {
       "org.gnome.ScreenSaver",
       null
     );
+    this._loginManagerProxy = await (
+      Gio.DBusProxy.new_for_bus as GioDBusProxyNewForBus
+    )(
+      Gio.BusType.SYSTEM,
+      Gio.DBusProxyFlags.NONE,
+      null,
+      "org.freedesktop.login1",
+      "/org/freedesktop/login1",
+      "org.freedesktop.login1.Manager",
+      null
+    );
     this._settings = this.getSettings();
     await this.addSignals(
       Signal.forProxySignal(
@@ -171,9 +186,11 @@ export default class IdleHamsterExtension extends Extension {
     this._settings = undefined;
     this._idleMonitorProxy = undefined;
     this._screensaverProxy = undefined;
+    this._loginManagerProxy = undefined;
     this._hamsterProxy = undefined;
     this._notificationSource = undefined;
     this._notifyOnStop = undefined;
+    this._suspendTime = undefined;
     logger.debug("disabled");
   }
 
@@ -284,6 +301,18 @@ export default class IdleHamsterExtension extends Extension {
           Signal.forSettingsKeyChange(
             logger,
             this._settings!,
+            "stop-on-suspend",
+            this.updateStopOnSuspend.bind(this)
+          ),
+          Signal.forSettingsKeyChange(
+            logger,
+            this._settings!,
+            "stop-on-shutdown",
+            this.updateStopOnShutdown.bind(this)
+          ),
+          Signal.forSettingsKeyChange(
+            logger,
+            this._settings!,
             "notify-on-stop",
             this.updateNotifyOnStop.bind(this)
           )
@@ -294,18 +323,27 @@ export default class IdleHamsterExtension extends Extension {
     }
   }
 
-  async stopTracking(reason: StopTrackingReason): Promise<void> {
+  async stopTracking(
+    reason: StopTrackingReason,
+    lastActiveTime?: Date
+  ): Promise<void> {
     const logger = this.getLogger();
-    const [idleTime] = (
-      await this._idleMonitorProxy!.call(
-        "GetIdletime",
-        null,
-        Gio.DBusCallFlags.NONE,
-        -1,
-        null
-      )
-    ).recursiveUnpack();
-    const lastActiveTimeMillis = Date.now() - idleTime;
+    let idleTime: number;
+    if (lastActiveTime === undefined) {
+      [idleTime] = (
+        await this._idleMonitorProxy!.call(
+          "GetIdletime",
+          null,
+          Gio.DBusCallFlags.NONE,
+          -1,
+          null
+        )
+      ).recursiveUnpack() as [number];
+      lastActiveTime = new Date(Date.now() - idleTime);
+    } else {
+      idleTime = Date.now() - lastActiveTime.getTime();
+    }
+    const lastActiveTimeMillis = lastActiveTime.getTime();
     const lastActiveTimeSecs = Math.floor(lastActiveTimeMillis / 1000);
     const lastActiveTimeString = new Date(
       lastActiveTimeMillis
@@ -313,7 +351,7 @@ export default class IdleHamsterExtension extends Extension {
     const activity = this._todaysLastFact!.activity;
     let stopMsg = `stopping hamster activity tracking of '${activity}' due to ${reason}`;
     if (reason == "idleness") {
-      logger.info(`idle time: ${toTimeString(idleTime / 1000)}`);
+      logger.info(`idle time: ${toTimeString(idleTime)}`);
       stopMsg += `; user last active at ${lastActiveTimeString}`;
     }
     logger.log(stopMsg);
@@ -334,10 +372,19 @@ export default class IdleHamsterExtension extends Extension {
       const source = this.getNotificationSource();
       let msg: string;
       // Don't just subsitute `reason` because we want to translate the entire phrase
-      if (reason == "idleness") {
-        msg = _`end time was set to ${lastActiveTimeString} due to idleness`;
-      } else {
-        msg = _`end time was set to ${lastActiveTimeString} due to the screen being locked`;
+      switch (reason) {
+        case "idleness":
+          msg = _`end time was set to ${lastActiveTimeString} due to idleness`;
+          break;
+        case "screen lock":
+          msg = _`end time was set to ${lastActiveTimeString} due to the screen being locked`;
+          break;
+        case "suspend":
+          msg = _`end time was set to ${lastActiveTimeString} due to the machine being suspended`;
+          break;
+        case "shutdown":
+          msg = _`end time was set to ${lastActiveTimeString} due to the machine being shutdown`;
+          break;
       }
       const notification = new MessageTray.Notification({
         source: source,
@@ -426,6 +473,66 @@ export default class IdleHamsterExtension extends Extension {
       }
     );
     if (stopOnLock) {
+      this.updateTrackingActivityOnlySignals(await this.addSignals(signal));
+    } else {
+      await this.removeSignals(signal);
+    }
+  }
+
+  async updateStopOnSuspend(
+    stopOnSuspend: StopOnSuspendChoices
+  ): Promise<void> {
+    const logger = this.getLogger();
+    const signal = Signal.forProxySignal(
+      logger,
+      this._loginManagerProxy!,
+      "PrepareForSleep",
+      async (start: boolean): Promise<void> => {
+        if (stopOnSuspend == "always" && start) {
+          await this.stopTracking("suspend");
+        } else if (stopOnSuspend == "idle") {
+          if (start) {
+            const now = new Date();
+            logger.debug(`setting sleep time to ${now}`);
+            this._suspendTime = now;
+          } else {
+            logger.debug(`suspend time was ${this._suspendTime}`);
+            if (this._suspendTime) {
+              const suspendDuration = Date.now() - this._suspendTime.getTime();
+              logger.debug(
+                `was suspended for ${toTimeString(suspendDuration)}`
+              );
+              const idleDuration =
+                this._settings!.get_value("idle-delay").recursiveUnpack() *
+                1000;
+              if (suspendDuration >= idleDuration) {
+                await this.stopTracking("idleness", this._suspendTime);
+              }
+              this._suspendTime = undefined;
+            }
+          }
+        }
+      }
+    );
+    if (stopOnSuspend != "never") {
+      this.updateTrackingActivityOnlySignals(await this.addSignals(signal));
+    } else {
+      await this.removeSignals(signal);
+    }
+  }
+
+  async updateStopOnShutdown(stopOnShutdown: boolean): Promise<void> {
+    const signal = Signal.forProxySignal(
+      this.getLogger(),
+      this._loginManagerProxy!,
+      "PrepareForShutdown",
+      async (start: boolean): Promise<void> => {
+        if (start) {
+          await this.stopTracking("shutdown");
+        }
+      }
+    );
+    if (stopOnShutdown) {
       this.updateTrackingActivityOnlySignals(await this.addSignals(signal));
     } else {
       await this.removeSignals(signal);
