@@ -20,16 +20,16 @@ $(JS_FILES): node_modules $(TS_FILES)
 test-schema: $(SCHEMA_FILENAME)
 	@glib-compile-schemas --strict --dry-run schemas
 
+$(BUNDLE_FILENAME): metadata.json $(JS_FILES) $(SCHEMA_FILENAME) po/*.po test-schema
+	@gnome-extensions pack $(JS_FILES:%=--extra-source=%) --force
+
+pack: $(BUNDLE_FILENAME)
+
 $(TRANSLATIONS_FILENAME): $(JS_FILES)
 	@xgettext --from-code=UTF-8 --output=$(TRANSLATIONS_FILENAME) --tag=_:javascript-gnome-format \
 		--directory=dist $(JS_FILES:dist/%.js=%.js) \
 		$(JS_FILES:%=--generated=%) \
 		$(TS_FILES:%=--reference=%)
-
-$(BUNDLE_FILENAME): metadata.json $(JS_FILES) $(SCHEMA_FILENAME) $(TRANSLATIONS_FILENAME) test-schema
-	@gnome-extensions pack $(JS_FILES:%=--extra-source=%) --force
-
-pack: $(BUNDLE_FILENAME)
 
 translations: $(TRANSLATIONS_FILENAME)
 
@@ -37,7 +37,7 @@ install: $(BUNDLE_FILENAME)
 	@gnome-extensions install --force $(BUNDLE_FILENAME)
 
 clean:
-	@rm -rf dist node_modules $(BUNDLE_FILENAME) $(TRANSLATIONS_FILENAME)
+	@rm -rf dist node_modules $(BUNDLE_FILENAME)
 
 test-nested: install
 	@env G_MESSAGES_DEBUG="GNOME Shell" MUTTER_DEBUG_DUMMY_MODE_SPECS=2160x1350 SHELL_DEBUG=all WAYLAND_DISPLAY=wayland-1 \
