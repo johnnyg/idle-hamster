@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-07-16 22:27+1000\n"
+"POT-Creation-Date: 2025-07-16 22:55+1000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -37,19 +37,23 @@ msgstr ""
 msgid "Idle Hamster"
 msgstr ""
 
-#: extension.js:198
+#: extension.js:199
+msgid "end time was set to {0} due to idleness"
+msgstr ""
+
+#: extension.js:202
+msgid "end time was set to {0} due to the screen being locked"
+msgstr ""
+
+#: extension.js:206
 msgid "Stopped tracking activity '{0}'"
 msgstr ""
 
-#: extension.js:199
-msgid "end time was set to {0} due to {1}"
-msgstr ""
-
-#: extension.js:204
+#: extension.js:212
 msgid "open preferences"
 msgstr ""
 
-#: extension.js:207
+#: extension.js:215
 msgid "resume tracking activity"
 msgstr ""
 
