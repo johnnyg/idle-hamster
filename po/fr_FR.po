@@ -1,0 +1,119 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2025-07-16 22:55+1000\n"
+"PO-Revision-Date: 2025-07-16 23:17+1000\n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Language: fr_FR\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: Poedit 3.6\n"
+
+#: extension.js:58
+msgid "Idle hamster error"
+msgstr "Erreur avec \"Hamster au repos\""
+
+#: extension.js:59
+msgid "Couldn't enable extension; please install hamster"
+msgstr "Pouvais pas activer, installer hamster s'il vous plaît"
+
+#: extension.js:64
+msgid "Open hamster website"
+msgstr "Ouvrez le site web de hamster"
+
+#: extension.js:68
+msgid "Unable to detect hamster, please make sure it is installed"
+msgstr "Pouvez pas détecter hamster, veuillez vous assurez qu'il est installé"
+
+#: extension.js:101
+msgid "Idle Hamster"
+msgstr "Hamster au repos"
+
+#: extension.js:199
+msgid "end time was set to {0} due to idleness"
+msgstr "l'heure de fin a été réglez à {0} en raison d'être inactif"
+
+#: extension.js:202
+msgid "end time was set to {0} due to the screen being locked"
+msgstr "l'heure de fin a été réglez à {0} en raison du verrouillage de l'écran"
+
+#: extension.js:206
+msgid "Stopped tracking activity '{0}'"
+msgstr "Arrêté de suivre l'activité '{0}'"
+
+#: extension.js:212
+msgid "open preferences"
+msgstr "ouvrez les préférences"
+
+#: extension.js:215
+msgid "resume tracking activity"
+msgstr "continuez à suivre l'activité"
+
+#: prefs.js:56
+msgid "General"
+msgstr "Générale"
+
+#: prefs.js:61
+msgid "Idle settings"
+msgstr "Paramètres d'inactivité"
+
+#: prefs.js:62
+msgid "Configure how we define how long idle is"
+msgstr "Configurez comment nous défini la durée d'inactivité"
+
+#: prefs.js:66
+msgid "Idle duration"
+msgstr "Durée d'inactivité"
+
+#: prefs.js:67
+msgid "How many minutes before we stop tracking an activity"
+msgstr "Combien de minutes avant que nous arrêtons une activité"
+
+#: prefs.js:76
+msgid "Use screen lock idle duration"
+msgstr "Utiliser la durée d'inactivité du verrouillage de l'écran"
+
+#: prefs.js:77
+msgid "Use the same idle time as the screen lock"
+msgstr "Utilisez le même temps d'inactivité que le verrouillage de l'écran"
+
+#: prefs.js:81
+msgid "Other stop events"
+msgstr "Autres raisons pour arrêter"
+
+#: prefs.js:82
+msgid "Configure whether we stop tracking based on other events"
+msgstr "Configurez si nous arrêtons de suivre l'activité pour autres raisons"
+
+#: prefs.js:86
+msgid "Stop tracking activity on screen lock"
+msgstr "Arrêtez de suivre l'activité quand l'écran est verrouillé"
+
+#: prefs.js:87
+msgid "Stop tracking on screen lock regardless of idle time"
+msgstr "Arrêtez de suivre l'activité quand l'écran est verrouillé quel que soit le temps d'inactivité"
+
+#: prefs.js:91
+msgid "Notifications"
+msgstr "Notifications"
+
+#: prefs.js:92
+msgid "Configure which notifications to show"
+msgstr "Configurez les notifications à afficher"
+
+#: prefs.js:96
+msgid "Notify when stop tracking an activity"
+msgstr "Notifier lorsque nous arrêtons de suivre une activité"
+
+#: prefs.js:97
+msgid "Show a notification when we stop tracking activity"
+msgstr "Afficher une notification lorsque nous arrêtons de suivre une activité"
