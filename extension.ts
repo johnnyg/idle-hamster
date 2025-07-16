@@ -332,10 +332,17 @@ export default class IdleHamsterExtension extends Extension {
     }
     if (this._notifyOnStop) {
       const source = this.getNotificationSource();
+      let msg: string;
+      // Don't just subsitute `reason` because we want to translate the entire phrase
+      if (reason == "idleness") {
+        msg = _`end time was set to ${lastActiveTimeString} due to idleness`;
+      } else {
+        msg = _`end time was set to ${lastActiveTimeString} due to the screen being locked`;
+      }
       const notification = new MessageTray.Notification({
         source: source,
         title: _`Stopped tracking activity '${activity}'`,
-        body: _`end time was set to ${lastActiveTimeString} due to ${reason}`,
+        body: msg,
         gicon: new Gio.ThemedIcon({ name: "dialog-information" }),
         iconName: "dialog-information",
         urgency: MessageTray.Urgency.NORMAL,
