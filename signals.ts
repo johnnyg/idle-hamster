@@ -47,11 +47,23 @@ export function forSettingsKeyChange<T>(
   };
 }
 
+export function forProxySignal(
+  logger: ConsoleLike,
+  proxy: Gio.DBusProxy,
+  signal: string,
+  callback: () => Promise<void>
+): Connector;
 export function forProxySignal<T>(
   logger: ConsoleLike,
   proxy: Gio.DBusProxy,
   signal: string,
   callback: (value: T) => Promise<void>
+): Connector;
+export function forProxySignal<T>(
+  logger: ConsoleLike,
+  proxy: Gio.DBusProxy,
+  signal: string,
+  callback: (...params: T[]) => Promise<void>
 ): Connector {
   return {
     id: `${proxy.get_object_path()}/g-signal::${signal}`,
@@ -64,11 +76,14 @@ export function forProxySignal<T>(
           signalName: string,
           parameters: GLib.Variant
         ) => {
-          const value = parameters.recursiveUnpack();
           logger.info(
-            `received signal ${signalName}=${value} from ${source.get_interface_name()}`
+            `received signal ${signalName}=${parameters.print(
+              true
+            )} from ${source.get_interface_name()}`
           );
-          await callback(value);
+          const params: Parameters<typeof callback> =
+            parameters.recursiveUnpack();
+          await callback(...params);
         }
       );
       logger.debug(
