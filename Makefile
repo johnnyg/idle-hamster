@@ -7,14 +7,18 @@ TRANSLATIONS_FILENAME=po/$(GETTEXT_DOMAIN).pot
 TS_FILES := $(filter-out %.d.ts,$(wildcard *.ts))
 JS_FILES := $(TS_FILES:%.ts=dist/%.js)
 
-.PHONY: all pack install clean test-schema test-nested translations
+.PHONY: all deps pack install clean test-schema test-nested translations
 
 all: $(JS_FILES)
 
 node_modules: package.json
-	@npm install
+	@# no need to audit here because we will always audit (even if node_modules exists)
+	@npm install --no-audit
 
-$(JS_FILES): node_modules $(TS_FILES)
+deps: node_modules
+	@npm audit
+
+$(JS_FILES): deps $(TS_FILES)
 	@tsc
 
 test-schema: $(SCHEMA_FILENAME)
