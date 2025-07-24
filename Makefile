@@ -18,7 +18,7 @@ node_modules: package.json
 deps: node_modules
 	@npm audit
 
-$(JS_FILES): deps $(TS_FILES)
+$(JS_FILES) &: deps $(TS_FILES)
 	@tsc
 
 test-schema: $(SCHEMA_FILENAME)
