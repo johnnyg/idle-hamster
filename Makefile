@@ -18,7 +18,7 @@ node_modules: package.json
 audit:
 	@npm audit
 
-$(JS_FILES) &: $(TS_FILES)
+$(JS_FILES) &: node_modules $(TS_FILES)
 	@tsc
 
 build: $(JS_FILES)
