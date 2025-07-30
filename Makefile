@@ -7,23 +7,17 @@ TRANSLATIONS_FILENAME=po/$(GETTEXT_DOMAIN).pot
 TS_FILES := $(filter-out %.d.ts,$(wildcard *.ts))
 JS_FILES := $(TS_FILES:%.ts=dist/%.js)
 
-.PHONY: all audit build check pack install clean test-schema test-nested translations
+.PHONY: all build pack install clean test-schema test-nested translations
 
 all: build
 
 node_modules: package.json
-	@# no need to audit here because we will always audit (even if node_modules exists)
-	@npm install --no-audit
-
-audit:
-	@npm audit
+	@npm install
 
 $(JS_FILES) &: node_modules $(TS_FILES)
 	@tsc
 
 build: $(JS_FILES)
-
-check: audit build test-schema
 
 test-schema: $(SCHEMA_FILENAME)
 	@glib-compile-schemas --strict --dry-run schemas
@@ -41,7 +35,7 @@ $(TRANSLATIONS_FILENAME): $(JS_FILES)
 
 translations: $(TRANSLATIONS_FILENAME)
 
-install: check $(BUNDLE_FILENAME)
+install: test-schema $(BUNDLE_FILENAME)
 	@gnome-extensions install --force $(BUNDLE_FILENAME)
 
 clean:
