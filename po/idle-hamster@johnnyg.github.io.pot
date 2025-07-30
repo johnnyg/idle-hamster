@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-07-16 22:55+1000\n"
+"POT-Creation-Date: 2025-07-30 22:53+1000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -17,102 +17,138 @@ msgstr ""
 "Content-Type: text/plain; charset=CHARSET\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: extension.js:58
+#: extension.js:61
 msgid "Idle hamster error"
 msgstr ""
 
-#: extension.js:59
+#: extension.js:62
 msgid "Couldn't enable extension; please install hamster"
 msgstr ""
 
-#: extension.js:64
+#: extension.js:67
 msgid "Open hamster website"
 msgstr ""
 
-#: extension.js:68
+#: extension.js:71
 msgid "Unable to detect hamster, please make sure it is installed"
 msgstr ""
 
-#: extension.js:101
+#: extension.js:107
 msgid "Idle Hamster"
 msgstr ""
 
-#: extension.js:199
+#: extension.js:213
 msgid "end time was set to {0} due to idleness"
 msgstr ""
 
-#: extension.js:202
+#: extension.js:216
 msgid "end time was set to {0} due to the screen being locked"
 msgstr ""
 
-#: extension.js:206
+#: extension.js:219
+msgid "end time was set to {0} due to the computer being suspended"
+msgstr ""
+
+#: extension.js:222
+msgid "end time was set to {0} due to the computer being shutdown"
+msgstr ""
+
+#: extension.js:227
 msgid "Stopped tracking activity '{0}'"
 msgstr ""
 
-#: extension.js:212
+#: extension.js:233
 msgid "open preferences"
 msgstr ""
 
-#: extension.js:215
+#: extension.js:236
 msgid "resume tracking activity"
 msgstr ""
 
-#: prefs.js:56
-msgid "General"
+#: prefs.js:72
+msgid "Never"
 msgstr ""
 
-#: prefs.js:61
-msgid "Idle settings"
+#: prefs.js:73
+msgid "If Idle"
 msgstr ""
 
-#: prefs.js:62
-msgid "Configure how we define how long idle is"
-msgstr ""
-
-#: prefs.js:66
-msgid "Idle duration"
-msgstr ""
-
-#: prefs.js:67
-msgid "How many minutes before we stop tracking an activity"
-msgstr ""
-
-#: prefs.js:76
-msgid "Use screen lock idle duration"
-msgstr ""
-
-#: prefs.js:77
-msgid "Use the same idle time as the screen lock"
-msgstr ""
-
-#: prefs.js:81
-msgid "Other stop events"
+#: prefs.js:74
+msgid "Always"
 msgstr ""
 
 #: prefs.js:82
-msgid "Configure whether we stop tracking based on other events"
-msgstr ""
-
-#: prefs.js:86
-msgid "Stop tracking activity on screen lock"
+msgid "General"
 msgstr ""
 
 #: prefs.js:87
-msgid "Stop tracking on screen lock regardless of idle time"
+msgid "Idle settings"
 msgstr ""
 
-#: prefs.js:91
-msgid "Notifications"
+#: prefs.js:88
+msgid "Configure how we define how long idle is"
 msgstr ""
 
 #: prefs.js:92
+msgid "Idle duration"
+msgstr ""
+
+#: prefs.js:93
+msgid "How many minutes before we stop tracking an activity"
+msgstr ""
+
+#: prefs.js:102
+msgid "Use screen lock idle duration"
+msgstr ""
+
+#: prefs.js:103
+msgid "Use the same idle time as the screen lock"
+msgstr ""
+
+#: prefs.js:107
+msgid "Other stop events"
+msgstr ""
+
+#: prefs.js:108
+msgid "Configure whether we stop tracking based on other events"
+msgstr ""
+
+#: prefs.js:112
+msgid "Stop tracking activity on screen lock"
+msgstr ""
+
+#: prefs.js:113
+msgid "Stop tracking on screen lock regardless of idle time"
+msgstr ""
+
+#: prefs.js:117
+msgid "Stop tracking activity on suspend"
+msgstr ""
+
+#: prefs.js:118
+msgid "Stop tracking when computer is suspended"
+msgstr ""
+
+#: prefs.js:125
+msgid "Stop tracking activity on shutdown"
+msgstr ""
+
+#: prefs.js:126
+msgid "Stop tracking when computer is shutdown"
+msgstr ""
+
+#: prefs.js:130
+msgid "Notifications"
+msgstr ""
+
+#: prefs.js:131
 msgid "Configure which notifications to show"
 msgstr ""
 
-#: prefs.js:96
+#: prefs.js:135
 msgid "Notify when stop tracking an activity"
 msgstr ""
 
-#: prefs.js:97
+#: prefs.js:136
 msgid "Show a notification when we stop tracking activity"
 msgstr ""

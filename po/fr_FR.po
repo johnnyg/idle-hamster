@@ -8,8 +8,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-07-16 22:55+1000\n"
-"PO-Revision-Date: 2025-07-16 23:17+1000\n"
+"POT-Creation-Date: 2025-07-30 22:53+1000\n"
+"PO-Revision-Date: 2025-07-30 22:56+1000\n"
 "Last-Translator: \n"
 "Language-Team: \n"
 "Language: fr_FR\n"
@@ -18,102 +18,142 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "X-Generator: Poedit 3.6\n"
 
-#: extension.js:58
+#: extension.js:61
 msgid "Idle hamster error"
 msgstr "Erreur avec \"Hamster au repos\""
 
-#: extension.js:59
+#: extension.js:62
 msgid "Couldn't enable extension; please install hamster"
 msgstr "Pouvais pas activer, installer hamster s'il vous plaît"
 
-#: extension.js:64
+#: extension.js:67
 msgid "Open hamster website"
 msgstr "Ouvrez le site web de hamster"
 
-#: extension.js:68
+#: extension.js:71
 msgid "Unable to detect hamster, please make sure it is installed"
 msgstr "Pouvez pas détecter hamster, veuillez vous assurez qu'il est installé"
 
-#: extension.js:101
+#: extension.js:107
 msgid "Idle Hamster"
 msgstr "Hamster au repos"
 
-#: extension.js:199
+#: extension.js:213
 msgid "end time was set to {0} due to idleness"
 msgstr "l'heure de fin a été réglez à {0} en raison d'être inactif"
 
-#: extension.js:202
+#: extension.js:216
 msgid "end time was set to {0} due to the screen being locked"
 msgstr "l'heure de fin a été réglez à {0} en raison du verrouillage de l'écran"
 
-#: extension.js:206
+#: extension.js:219
+msgid "end time was set to {0} due to the computer being suspended"
+msgstr ""
+"l'heure de fin a été réglez à {0} en raison de la mise en veille de "
+"l'ordinateur"
+
+#: extension.js:222
+msgid "end time was set to {0} due to the computer being shutdown"
+msgstr "l'heure de fin a été réglez à {0} en raison de l'arrêt de l'ordinateur"
+
+#: extension.js:227
 msgid "Stopped tracking activity '{0}'"
 msgstr "Arrêté de suivre l'activité '{0}'"
 
-#: extension.js:212
+#: extension.js:233
 msgid "open preferences"
 msgstr "ouvrez les préférences"
 
-#: extension.js:215
+#: extension.js:236
 msgid "resume tracking activity"
 msgstr "continuez à suivre l'activité"
 
-#: prefs.js:56
+#: prefs.js:72
+msgid "Never"
+msgstr "Jamais"
+
+#: prefs.js:73
+msgid "If Idle"
+msgstr "Si inactif"
+
+#: prefs.js:74
+msgid "Always"
+msgstr "Toujours"
+
+#: prefs.js:82
 msgid "General"
 msgstr "Générale"
 
-#: prefs.js:61
+#: prefs.js:87
 msgid "Idle settings"
 msgstr "Paramètres d'inactivité"
 
-#: prefs.js:62
+#: prefs.js:88
 msgid "Configure how we define how long idle is"
 msgstr "Configurez comment nous défini la durée d'inactivité"
 
-#: prefs.js:66
+#: prefs.js:92
 msgid "Idle duration"
 msgstr "Durée d'inactivité"
 
-#: prefs.js:67
+#: prefs.js:93
 msgid "How many minutes before we stop tracking an activity"
 msgstr "Combien de minutes avant que nous arrêtons une activité"
 
-#: prefs.js:76
+#: prefs.js:102
 msgid "Use screen lock idle duration"
 msgstr "Utiliser la durée d'inactivité du verrouillage de l'écran"
 
-#: prefs.js:77
+#: prefs.js:103
 msgid "Use the same idle time as the screen lock"
 msgstr "Utilisez le même temps d'inactivité que le verrouillage de l'écran"
 
-#: prefs.js:81
+#: prefs.js:107
 msgid "Other stop events"
 msgstr "Autres raisons pour arrêter"
 
-#: prefs.js:82
+#: prefs.js:108
 msgid "Configure whether we stop tracking based on other events"
 msgstr "Configurez si nous arrêtons de suivre l'activité pour autres raisons"
 
-#: prefs.js:86
+#: prefs.js:112
 msgid "Stop tracking activity on screen lock"
 msgstr "Arrêtez de suivre l'activité quand l'écran est verrouillé"
 
-#: prefs.js:87
+#: prefs.js:113
 msgid "Stop tracking on screen lock regardless of idle time"
-msgstr "Arrêtez de suivre l'activité quand l'écran est verrouillé quel que soit le temps d'inactivité"
+msgstr ""
+"Arrêtez de suivre l'activité quand l'écran est verrouillé quel que soit le "
+"temps d'inactivité"
 
-#: prefs.js:91
+#: prefs.js:117
+msgid "Stop tracking activity on suspend"
+msgstr "Arrêtez de suivre l'activité lorsque l'ordinateur est mise en veille"
+
+#: prefs.js:118
+msgid "Stop tracking when computer is suspended"
+msgstr "Arrêtez de suivre l'activité lorsque l'ordinateur est mise en veille"
+
+#: prefs.js:125
+msgid "Stop tracking activity on shutdown"
+msgstr "Arrêtez de suivre l'activité lorsque l'ordinateur est éteint"
+
+#: prefs.js:126
+msgid "Stop tracking when computer is shutdown"
+msgstr "Arrêtez de suivre l'activité lorsque l'ordinateur est éteint"
+
+#: prefs.js:130
 msgid "Notifications"
 msgstr "Notifications"
 
-#: prefs.js:92
+#: prefs.js:131
 msgid "Configure which notifications to show"
 msgstr "Configurez les notifications à afficher"
 
-#: prefs.js:96
+#: prefs.js:135
 msgid "Notify when stop tracking an activity"
 msgstr "Notifier lorsque nous arrêtons de suivre une activité"
 
-#: prefs.js:97
+#: prefs.js:136
 msgid "Show a notification when we stop tracking activity"
 msgstr "Afficher une notification lorsque nous arrêtons de suivre une activité"
