@@ -284,7 +284,7 @@ export default class IdleHamsterExtension extends Extension {
             logger,
             this._idleMonitorProxy!,
             "WatchFired",
-            this.stopTracking.bind(this, "idleness")
+            this.stopTracking.bind(this, "idleness", undefined)
           ),
           Signal.forSettingsKeyChange(
             logger,
