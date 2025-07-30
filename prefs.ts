@@ -164,7 +164,7 @@ export default class IdleHamsterPreferences extends ExtensionPreferences {
 
     const stopOnSuspend = new Adw.ComboRow({
       title: _("Stop tracking activity on suspend"),
-      subtitle: _("Stop tracking when machine is suspended"),
+      subtitle: _("Stop tracking when computer is suspended"),
       model: new Gtk.StringList({
         strings: this._stopOnSuspendIndexToEnum?.map(
           (choice: string) => this._stopOnSuspendEnumToLabel!.get(choice)!
@@ -175,7 +175,7 @@ export default class IdleHamsterPreferences extends ExtensionPreferences {
 
     const stopOnShutdown = new Adw.SwitchRow({
       title: _("Stop tracking activity on shutdown"),
-      subtitle: _("Stop tracking when machine is shutdown"),
+      subtitle: _("Stop tracking when computer is shutdown"),
     });
     otherStopEventsGroup.add(stopOnShutdown);
 

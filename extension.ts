@@ -380,10 +380,10 @@ export default class IdleHamsterExtension extends Extension {
           msg = _`end time was set to ${lastActiveTimeString} due to the screen being locked`;
           break;
         case "suspend":
-          msg = _`end time was set to ${lastActiveTimeString} due to the machine being suspended`;
+          msg = _`end time was set to ${lastActiveTimeString} due to the computer being suspended`;
           break;
         case "shutdown":
-          msg = _`end time was set to ${lastActiveTimeString} due to the machine being shutdown`;
+          msg = _`end time was set to ${lastActiveTimeString} due to the computer being shutdown`;
           break;
       }
       const notification = new MessageTray.Notification({
