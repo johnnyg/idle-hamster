@@ -175,6 +175,10 @@ export default class IdleHamsterExtension extends Extension {
     await this.checkIfTrackingActivity();
   }
 
+  // Extension requires unlock-dialog mode so that we can receive
+  // the follow signals even if the screen is locked:
+  //  - idle monitor's watch fired signal
+  //  - screensaver's active changed signal
   async disable(): Promise<void> {
     const logger = this.getLogger();
     this._todaysLastFact = undefined;
