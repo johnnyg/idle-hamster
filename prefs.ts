@@ -80,47 +80,39 @@ function bind_with_mapping<T extends GObject.Object, K extends keyof T>(
 }
 
 export default class IdleHamsterPreferences extends ExtensionPreferences {
-  _settings?: Gio.Settings;
-  _sessionSettings?: Gio.Settings;
-  _stopOnSuspendEnumToIndex?: Map<string, number>;
-  _stopOnSuspendIndexToEnum?: string[];
-  _stopOnSuspendEnumToLabel?: Map<string, string>;
-
-  constructor(metadata: any) {
-    super(metadata);
-    this._settings = this.getSettings();
-    this._sessionSettings = this.getSettings("org.gnome.desktop.session");
-    const [stopOnSuspendRangeType, stopOnSuspendRangeValues] =
-      this._settings!.settingsSchema.get_key("stop-on-suspend")
-        .get_range()
-        .recursiveUnpack();
+  async fillPreferencesWindow(window: Adw.PreferencesWindow): Promise<void> {
+    const settings = this.getSettings();
+    const sessionSettings = this.getSettings("org.gnome.desktop.session");
+    const [stopOnSuspendRangeType, stopOnSuspendRangeValues]: [
+      string,
+      string[]
+    ] = settings.settingsSchema
+      .get_key("stop-on-suspend")
+      .get_range()
+      .recursiveUnpack();
     if (stopOnSuspendRangeType != "enum") {
       throw `Unexpected range value for stop-on-suspend: ${stopOnSuspendRangeType}`;
     }
-    this._stopOnSuspendIndexToEnum = stopOnSuspendRangeValues;
-    this._stopOnSuspendEnumToIndex = new Map(
-      this._stopOnSuspendIndexToEnum!.map((choice: string, index: number) => [
+    const stopOnSuspendIndexToEnum = stopOnSuspendRangeValues;
+    const stopOnSuspendEnumToIndex = new Map(
+      stopOnSuspendIndexToEnum.map((choice: string, index: number) => [
         choice,
         index,
       ])
     );
-    this._stopOnSuspendEnumToLabel = new Map([
+    const stopOnSuspendEnumToLabel = new Map([
       ["never", _("Never")],
       ["idle", _("If Idle")],
       ["always", _("Always")],
     ]);
     if (
-      !this._stopOnSuspendIndexToEnum?.every((value) =>
-        this._stopOnSuspendEnumToLabel?.has(value)
+      !stopOnSuspendIndexToEnum.every((value: string) =>
+        stopOnSuspendEnumToLabel.has(value)
       )
     ) {
-      throw `Mismatch between settings ${
-        this._stopOnSuspendIndexToEnum
-      } and prefs ${this._stopOnSuspendEnumToLabel.keys()}`;
+      throw `Mismatch between settings ${stopOnSuspendIndexToEnum} and prefs ${stopOnSuspendEnumToLabel.keys()}`;
     }
-  }
 
-  async fillPreferencesWindow(window: Adw.PreferencesWindow): Promise<void> {
     const page = new Adw.PreferencesPage({
       title: _("General"),
       iconName: "dialog-information-symbolic",
@@ -168,8 +160,8 @@ export default class IdleHamsterPreferences extends ExtensionPreferences {
       title: _("Stop tracking activity on suspend"),
       subtitle: _("Stop tracking when computer is suspended"),
       model: new Gtk.StringList({
-        strings: this._stopOnSuspendIndexToEnum?.map(
-          (choice: string) => this._stopOnSuspendEnumToLabel!.get(choice)!
+        strings: stopOnSuspendIndexToEnum.map(
+          (choice: string) => stopOnSuspendEnumToLabel!.get(choice)!
         ),
       }),
     });
@@ -202,7 +194,7 @@ export default class IdleHamsterPreferences extends ExtensionPreferences {
         GObject.BindingFlags.SYNC_CREATE
     );
 
-    this._settings!.bind(
+    settings.bind(
       "use-session-idle-delay",
       useSessionIdleDelay,
       "active",
@@ -210,7 +202,7 @@ export default class IdleHamsterPreferences extends ExtensionPreferences {
     );
 
     bind_with_mapping(
-      this._settings!,
+      settings,
       "idle-delay",
       idleDelay,
       "value",
@@ -223,7 +215,7 @@ export default class IdleHamsterPreferences extends ExtensionPreferences {
     );
 
     bind_with_mapping(
-      this._sessionSettings!,
+      sessionSettings,
       "idle-delay",
       useSessionIdleDelay,
       "sensitive",
@@ -232,7 +224,7 @@ export default class IdleHamsterPreferences extends ExtensionPreferences {
       (variant: GLib.Variant): boolean | null => variant.get_uint32() > 0
     );
 
-    this._settings!.bind(
+    settings.bind(
       "stop-on-lock",
       stopOnLock,
       "active",
@@ -242,7 +234,7 @@ export default class IdleHamsterPreferences extends ExtensionPreferences {
     const logger = this.getLogger();
 
     bind_with_mapping(
-      this._settings!,
+      settings,
       "stop-on-suspend",
       stopOnSuspend,
       "selected",
@@ -250,33 +242,31 @@ export default class IdleHamsterPreferences extends ExtensionPreferences {
       Gio.SettingsBindFlags.DEFAULT,
       (variant: GLib.Variant): number | null => {
         const [choice, _] = variant.get_string();
-        const index = this._stopOnSuspendEnumToIndex!.get(choice)!;
+        const index = stopOnSuspendEnumToIndex.get(choice)!;
         logger.log(`${choice} -> ${index}`);
         return index;
       },
       (index: number, _: GLib.VariantType): GLib.Variant => {
-        const choice = GLib.Variant.new_string(
-          this._stopOnSuspendIndexToEnum![index]
-        );
+        const choice = GLib.Variant.new_string(stopOnSuspendIndexToEnum[index]);
         logger.log(`${index} -> ${choice.print(true)}`);
         return choice;
       }
     );
-    this._settings!.bind(
+    settings.bind(
       "stop-on-shutdown",
       stopOnShutdown,
       "active",
       Gio.SettingsBindFlags.DEFAULT
     );
 
-    this._settings!.bind(
+    settings.bind(
       "stop-on-shutdown",
       stopOnShutdown,
       "active",
       Gio.SettingsBindFlags.DEFAULT
     );
 
-    this._settings!.bind(
+    settings.bind(
       "notify-on-stop",
       notifyOnStop,
       "active",
@@ -285,12 +275,12 @@ export default class IdleHamsterPreferences extends ExtensionPreferences {
 
     useSessionIdleDelay.set_property(
       "active",
-      this._settings!.get_boolean("use-session-idle-delay")
+      settings.get_boolean("use-session-idle-delay")
     );
 
     idleDelay.set_property(
       "sensitive",
-      !this._settings!.get_boolean("use-session-idle-delay")
+      !settings.get_boolean("use-session-idle-delay")
     );
   }
 }
