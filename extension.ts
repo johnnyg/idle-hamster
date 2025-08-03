@@ -21,9 +21,12 @@ import GLib from "gi://GLib";
 import * as Main from "resource:///org/gnome/shell/ui/main.js";
 import * as MessageTray from "resource:///org/gnome/shell/ui/messageTray.js";
 
-import { Extension } from "resource:///org/gnome/shell/extensions/extension.js";
+import {
+  Extension,
+  gettext,
+} from "resource:///org/gnome/shell/extensions/extension.js";
 import * as Signal from "./signals.js";
-import { gettext as _ } from "./gettext.js";
+import { templateTagWrapper } from "./utils.js";
 
 import * as Hamster from "hamster";
 
@@ -31,6 +34,7 @@ Gio._promisify(Gio.DBusProxy, "new_for_bus");
 Gio._promisify(Gio.DBusProxy.prototype, "call");
 
 const IDLE_DELAY_OFFSET_SEC = 12; // 10s to blank
+const _ = templateTagWrapper(gettext);
 
 // Alias `Gio.DBusProxy.new_for_bus` because `Gio._promisify` confuses typescript
 type GioDBusProxyNewForBus = (
