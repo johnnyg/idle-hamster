@@ -15,7 +15,8 @@ node_modules: package.json
 	@npm install
 
 $(JS_FILES) &: node_modules $(TS_FILES)
-	@tsc
+	@node_modules/.bin/tsc
+	@node_modules/.bin/eslint --fix $(JS_FILES)
 
 build: $(JS_FILES)
 

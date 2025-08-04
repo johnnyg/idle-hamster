@@ -16,6 +16,7 @@
   "homepage": "https://github.com/johnnyg/idle-hamster#readme",
   "sideEffects": false,
   "devDependencies": {
+    "@stylistic/eslint-plugin": "^5.2.2",
     "eslint": "^9.28.0",
     "eslint-plugin-jsdoc": "^50.7.1",
     "typescript": "^5.8.3"
