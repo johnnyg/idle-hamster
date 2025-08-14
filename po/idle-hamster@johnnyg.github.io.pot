@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-08-04 21:44+1000\n"
+"POT-Creation-Date: 2025-08-14 22:46+1000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -17,52 +17,48 @@ msgstr ""
 "Content-Type: text/plain; charset=CHARSET\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: extension.js:66
+#: extension.js:62
 msgid "Idle hamster error"
 msgstr ""
 
-#: extension.js:67
+#: extension.js:63
 msgid "Couldn't enable extension; please install hamster"
 msgstr ""
 
-#: extension.js:72
+#: extension.js:68
 msgid "Open hamster website"
 msgstr ""
 
-#: extension.js:76
+#: extension.js:72
 msgid "Unable to detect hamster, please make sure it is installed"
 msgstr ""
 
-#: extension.js:116
+#: extension.js:112
 msgid "Idle Hamster"
 msgstr ""
 
-#: extension.js:222
+#: extension.js:221
 msgid "end time was set to {0} due to idleness"
 msgstr ""
 
-#: extension.js:225
+#: extension.js:224
 msgid "end time was set to {0} due to the screen being locked"
 msgstr ""
 
-#: extension.js:228
+#: extension.js:227
 msgid "end time was set to {0} due to the computer being suspended"
 msgstr ""
 
-#: extension.js:231
+#: extension.js:230
 msgid "end time was set to {0} due to the computer being shutdown"
 msgstr ""
 
-#: extension.js:236
+#: extension.js:235
 msgid "Stopped tracking activity '{0}'"
 msgstr ""
 
-#: extension.js:242
+#: extension.js:241
 msgid "open preferences"
-msgstr ""
-
-#: extension.js:245
-msgid "resume tracking activity"
 msgstr ""
 
 #: prefs.js:68
