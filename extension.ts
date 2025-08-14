@@ -402,24 +402,9 @@ export default class IdleHamsterExtension extends Extension {
         iconName: "dialog-information",
         urgency: MessageTray.Urgency.NORMAL,
       });
-      notification.addAction(_("open preferences"), (): void => {
-        this.openPreferences();
-      });
       notification.addAction(
-        _("resume tracking activity"),
-        async (): Promise<void> => {
-          try {
-            await this._hamsterProxy!.call(
-              "StopOrRestartTracking",
-              null,
-              Gio.DBusCallFlags.NONE,
-              -1,
-              null
-            );
-          } catch (e) {
-            logger.error(`failed to resume tracking hamster activity: ${e}`);
-          }
-        }
+        _("open preferences"),
+        this.openPreferences.bind(this)
       );
       source.addNotification(notification);
     }
