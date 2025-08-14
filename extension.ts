@@ -356,8 +356,8 @@ export default class IdleHamsterExtension extends Extension {
     const lastActiveTimeString = new Date(
       lastActiveTimeMillis
     ).toLocaleTimeString();
-    const activity = this._todaysLastFact!.activity;
-    let stopMsg = `stopping hamster activity tracking of '${activity}' due to ${reason}`;
+    const fact = this._todaysLastFact!;
+    let stopMsg = `stopping hamster activity tracking of '${fact.activity}' due to ${reason}`;
     if (reason == "idleness") {
       logger.info(`idle time: ${toTimeString(idleTime)}`);
       stopMsg += `; user last active at ${lastActiveTimeString}`;
@@ -396,7 +396,7 @@ export default class IdleHamsterExtension extends Extension {
       }
       const notification = new MessageTray.Notification({
         source: source,
-        title: _`Stopped tracking activity '${activity}'`,
+        title: _`Stopped tracking activity '${fact.activity}'`,
         body: msg,
         gicon: new Gio.ThemedIcon({ name: "dialog-information" }),
         iconName: "dialog-information",
@@ -405,6 +405,10 @@ export default class IdleHamsterExtension extends Extension {
       notification.addAction(
         _("open preferences"),
         this.openPreferences.bind(this)
+      );
+      notification.addAction(
+        _("resume tracking activity"),
+        this.resumeTrackingActivity.bind(this, fact)
       );
       source.addNotification(notification);
     }
@@ -538,5 +542,39 @@ export default class IdleHamsterExtension extends Extension {
       `show notifications on stopping activity tracking? ${notifyOnStop}`
     );
     this._notifyOnStop = notifyOnStop;
+  }
+
+  async resumeTrackingActivity(fact: Hamster.Fact): Promise<void> {
+    const logger = this.getLogger();
+    if (!this.isTrackingActivity()) {
+      const now = new Date();
+      const year = `${now.getFullYear()}`;
+      const month = `${now.getMonth()}`.padStart(2, "0");
+      const day = `${now.getDate()}`.padStart(2, "0");
+      const hours = `${now.getHours()}`.padStart(2, "0");
+      const minutes = `${now.getMinutes()}`.padStart(2, "0");
+      fact.range.start = `${year}-${month}-${day} ${hours}:${minutes}`;
+      fact.range.end = null;
+      const factJSON = JSON.stringify(fact);
+      logger.info(`resume tracking activity: ${fact.activity}`);
+      logger.debug(`adding fact JSON: '${factJSON}'`)
+      try {
+        await this._hamsterProxy!.call(
+          "AddFactJSON",
+          new GLib.Variant("(s)", [factJSON]),
+          Gio.DBusCallFlags.NONE,
+          -1,
+          null
+        );
+      } catch (e) {
+        logger.error(`failed to resume tracking hamster activity: ${e}`);
+      }
+    } else {
+      logger.warn(
+        `not resuming tracking activity ${
+          fact.activity
+        } as we are already tracking ${this._todaysLastFact!.activity}`
+      );
+    }
   }
 }
