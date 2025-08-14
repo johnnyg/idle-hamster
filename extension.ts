@@ -55,10 +55,6 @@ function toTimeString(millisec: number): string {
   return `${Math.floor(sec / 60)} min ${Math.floor(sec % 60)} sec`;
 }
 
-function isTrackingActivity(fact?: Hamster.Fact): boolean {
-  return fact?.range.end === null;
-}
-
 export default class IdleHamsterExtension extends Extension {
   _hamsterProxy?: Gio.DBusProxy;
   _idleMonitorProxy?: Gio.DBusProxy;
@@ -280,11 +276,15 @@ export default class IdleHamsterExtension extends Extension {
     return lastFact;
   }
 
+  isTrackingActivity(): boolean {
+    return this._todaysLastFact?.range.end === null;
+  }
+
   async checkIfTrackingActivity(): Promise<void> {
     const logger = this.getLogger();
-    const wasTracking = isTrackingActivity(this._todaysLastFact);
+    const wasTracking = this.isTrackingActivity();
     this._todaysLastFact = await this.getTodaysLastFact();
-    const isTracking = isTrackingActivity(this._todaysLastFact);
+    const isTracking = this.isTrackingActivity();
     if (!wasTracking && isTracking) {
       this.updateTrackingActivityOnlySignals(
         await this.addSignals(
