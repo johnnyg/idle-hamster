@@ -10,6 +10,7 @@
   "url": "https://github.com/johnnyg/idle-hamster",
   "gettext-domain": "idle-hamster@johnnyg.github.io",
   "shell-version": [
-    "48"
+    "48",
+    "49"
   ]
 }
