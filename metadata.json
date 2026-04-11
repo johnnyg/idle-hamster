@@ -11,6 +11,7 @@
   "gettext-domain": "idle-hamster@johnnyg.github.io",
   "shell-version": [
     "48",
-    "49"
+    "49",
+    "50"
   ]
 }
