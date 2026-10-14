@@ -43,5 +43,4 @@ clean:
 	@rm -rf dist node_modules $(BUNDLE_FILENAME)
 
 test-nested: install
-	@env G_MESSAGES_DEBUG="GNOME Shell" MUTTER_DEBUG_DUMMY_MODE_SPECS=2160x1350 SHELL_DEBUG=all WAYLAND_DISPLAY=wayland-1 \
-		dbus-run-session -- gnome-shell --wayland-display=wayland-1 --nested --wayland
+	@env G_MESSAGES_DEBUG="GNOME Shell" SHELL_DEBUG=all dbus-run-session -- gnome-shell --devkit
