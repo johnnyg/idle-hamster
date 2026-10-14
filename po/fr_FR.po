@@ -8,59 +8,63 @@ msgid ""
 msgstr ""
 "Project-Id-Version: \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-08-14 22:46+1000\n"
-"PO-Revision-Date: 2025-08-14 22:50+1000\n"
+"POT-Creation-Date: 2026-10-14 22:25+1100\n"
+"PO-Revision-Date: 2026-10-14 22:33+1100\n"
 "Last-Translator: \n"
 "Language-Team: \n"
 "Language: fr_FR\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"X-Generator: Poedit 3.6\n"
+"X-Generator: Poedit 3.9\n"
 
-#: extension.js:62
+#: extension.js:63
 msgid "Idle hamster error"
 msgstr "Erreur avec \"Hamster au repos\""
 
-#: extension.js:63
+#: extension.js:64
 msgid "Couldn't enable extension; please install hamster"
 msgstr "Pouvais pas activer, installer hamster s'il vous plaît"
 
-#: extension.js:68
+#: extension.js:69
 msgid "Open hamster website"
 msgstr "Ouvrez le site web de hamster"
 
-#: extension.js:72
+#: extension.js:73
 msgid "Unable to detect hamster, please make sure it is installed"
 msgstr "Pouvez pas détecter hamster, veuillez vous assurez qu'il est installé"
 
-#: extension.js:112
+#: extension.js:115
 msgid "Idle Hamster"
 msgstr "Hamster au repos"
 
-#: extension.js:221
+#: extension.js:224
 msgid "end time was set to {0} due to idleness"
 msgstr "l'heure de fin a été réglez à {0} en raison d'être inactif"
 
-#: extension.js:224
+#: extension.js:227
 msgid "end time was set to {0} due to the screen being locked"
 msgstr "l'heure de fin a été réglez à {0} en raison du verrouillage de l'écran"
 
-#: extension.js:227
+#: extension.js:230
 msgid "end time was set to {0} due to the computer being suspended"
 msgstr ""
 "l'heure de fin a été réglez à {0} en raison de la mise en veille de "
 "l'ordinateur"
 
-#: extension.js:230
+#: extension.js:233
 msgid "end time was set to {0} due to the computer being shutdown"
 msgstr "l'heure de fin a été réglez à {0} en raison de l'arrêt de l'ordinateur"
 
-#: extension.js:235
+#: extension.js:238
 msgid "Stopped tracking activity '{0}'"
 msgstr "Arrêté de suivre l'activité '{0}'"
 
-#: extension.js:241
+#: extension.js:244
+msgid "open hamster overview"
+msgstr "afficher le résumé de hamster"
+
+#: extension.js:247
 msgid "open preferences"
 msgstr "ouvrez les préférences"
 
