@@ -57,6 +57,7 @@ function toTimeString(millisec: number): string {
 
 export default class IdleHamsterExtension extends Extension {
   _hamsterProxy?: Gio.DBusProxy;
+  _hamsterGUIGtkActionsProxy?: Gio.DBusProxy;
   _idleMonitorProxy?: Gio.DBusProxy;
   _screensaverProxy?: Gio.DBusProxy;
   _loginManagerProxy?: Gio.DBusProxy;
@@ -124,6 +125,17 @@ export default class IdleHamsterExtension extends Extension {
       throw err;
     }
     logger.info(`detected hamster version ${hamsterVersion}`);
+    this._hamsterGUIGtkActionsProxy = await (
+      Gio.DBusProxy.new_for_bus as GioDBusProxyNewForBus
+    )(
+      Gio.BusType.SESSION,
+      Gio.DBusProxyFlags.DO_NOT_AUTO_START_AT_CONSTRUCTION,
+      null,
+      "org.gnome.Hamster.GUI",
+      "/org/gnome/Hamster/GUI",
+      "org.gtk.Actions",
+      null
+    );
     this._idleMonitorProxy = await (
       Gio.DBusProxy.new_for_bus as GioDBusProxyNewForBus
     )(
@@ -191,6 +203,7 @@ export default class IdleHamsterExtension extends Extension {
     this._idleMonitorProxy = undefined;
     this._screensaverProxy = undefined;
     this._loginManagerProxy = undefined;
+    this._hamsterGUIGtkActionsProxy = undefined;
     this._hamsterProxy = undefined;
     this._notificationSource = undefined;
     this._notifyOnStop = undefined;
@@ -402,6 +415,18 @@ export default class IdleHamsterExtension extends Extension {
         iconName: "dialog-information",
         urgency: MessageTray.Urgency.NORMAL,
       });
+      notification.addAction(
+        _("open hamster overview"),
+        async (): Promise<void> => {
+          await this._hamsterGUIGtkActionsProxy!.call(
+            "Activate",
+            new GLib.Variant("(sava{sv})", ["overview", [], {}]),
+            Gio.DBusCallFlags.NONE,
+            -1,
+            null
+          );
+        }
+      );
       notification.addAction(
         _("open preferences"),
         this.openPreferences.bind(this)
