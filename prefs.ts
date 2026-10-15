@@ -173,6 +173,18 @@ export default class IdleHamsterPreferences extends ExtensionPreferences {
     });
     otherStopEventsGroup.add(stopOnShutdown);
 
+    const stopOnReboot = new Adw.SwitchRow({
+      title: _("Stop tracking activity on restart"),
+      subtitle: _("Stop tracking when computer is restarted"),
+    });
+    otherStopEventsGroup.add(stopOnReboot);
+
+    const stopOnLogOut = new Adw.SwitchRow({
+      title: _("Stop tracking activity on log out"),
+      subtitle: _("Stop tracking when user logs out"),
+    });
+    otherStopEventsGroup.add(stopOnLogOut);
+
     const notificationsGroup = new Adw.PreferencesGroup({
       title: _("Notifications"),
       description: _("Configure which notifications to show"),
@@ -260,8 +272,15 @@ export default class IdleHamsterPreferences extends ExtensionPreferences {
     );
 
     settings.bind(
-      "stop-on-shutdown",
-      stopOnShutdown,
+      "stop-on-reboot",
+      stopOnReboot,
+      "active",
+      Gio.SettingsBindFlags.DEFAULT,
+    );
+
+    settings.bind(
+      "stop-on-logout",
+      stopOnLogOut,
       "active",
       Gio.SettingsBindFlags.DEFAULT,
     );

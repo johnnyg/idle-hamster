@@ -32,6 +32,16 @@
       <summary>Stop tracking activity when computer is shutdown</summary>
       <description>Whether to stop tracking an activity when the computer is shutdown</description>
     </key>
+    <key name="stop-on-reboot" type="b">
+      <default>false</default>
+      <summary>Stop tracking activity when computer is restarted</summary>
+      <description>Whether to stop tracking an activity when the computer is restarted</description>
+    </key>
+    <key name="stop-on-logout" type="b">
+      <default>false</default>
+      <summary>Stop tracking activity when user logs out</summary>
+      <description>Whether to stop tracking an activity when the user logs out</description>
+    </key>
     <key name="notify-on-stop" type="b">
       <default>true</default>
       <summary>Show notification when we stop tracking an activity</summary>
