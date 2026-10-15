@@ -61,6 +61,7 @@ export default class IdleHamsterExtension extends Extension {
   _idleMonitorProxy?: Gio.DBusProxy;
   _screensaverProxy?: Gio.DBusProxy;
   _loginManagerProxy?: Gio.DBusProxy;
+  _sessionManagerProxy?: Gio.DBusProxy;
   _settings?: Gio.Settings;
   _signals?: Map<Signal.ID, Signal.Connection>;
   _trackingActivityOnlySignals?: Set<Signal.ID>;
@@ -169,6 +170,17 @@ export default class IdleHamsterExtension extends Extension {
       "org.freedesktop.login1.Manager",
       null
     );
+    this._sessionManagerProxy = await (
+      Gio.DBusProxy.new_for_bus as GioDBusProxyNewForBus
+    )(
+      Gio.BusType.SESSION,
+      Gio.DBusProxyFlags.NONE,
+      null,
+      "org.gnome.SessionManager",
+      "/org/gnome/SessionManager",
+      "org.gnome.SessionManager",
+      null
+    );
     this._settings = this.getSettings();
     await this.addSignals(
       Signal.forProxySignal(
@@ -182,6 +194,14 @@ export default class IdleHamsterExtension extends Extension {
         this._settings,
         "use-session-idle-delay",
         this.updateSessionIdleSync.bind(this)
+      ),
+      Signal.forProxySignal(
+        logger,
+        this._sessionManagerProxy,
+        "SessionOver",
+        async (): Promise<void> => {
+          logger.debug("session over");
+        }
       )
     );
     await this.checkIfTrackingActivity();
@@ -205,6 +225,7 @@ export default class IdleHamsterExtension extends Extension {
     this._idleMonitorProxy = undefined;
     this._screensaverProxy = undefined;
     this._loginManagerProxy = undefined;
+    this._sessionManagerProxy = undefined;
     this._hamsterGUIGtkActionsProxy = undefined;
     this._hamsterProxy = undefined;
     this._notificationSource = undefined;
