@@ -191,11 +191,13 @@ export default class IdleHamsterExtension extends Extension {
   // the follow signals even if the screen is locked:
   //  - idle monitor's watch fired signal
   //  - screensaver's active changed signal
-  async disable(): Promise<void> {
+  disable(): void {
     const logger = this.getLogger();
     this._todaysLastFact = undefined;
     for (let [_signalId, signal] of this._signals ?? []) {
-      await signal?.disconnect();
+      // we can't await on this anymore
+      // so let's just hope it finishes in time
+      signal?.disconnect();
     }
     this._signals?.clear();
     this._trackingActivityOnlySignals?.clear();
