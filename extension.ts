@@ -563,12 +563,15 @@ export default class IdleHamsterExtension extends Extension {
   }
 
   async updateStopOnShutdown(stopOnShutdown: boolean): Promise<void> {
+    const logger = this.getLogger();
     const signal = Signal.forProxySignal(
-      this.getLogger(),
+      logger,
       this._loginManagerProxy!,
-      "PrepareForShutdown",
-      async (start: boolean): Promise<void> => {
+      "PrepareForShutdownWithMetadata",
+      async (start: boolean, metadata: Map<string, string>): Promise<void> => {
         if (start) {
+          const shutdownType = metadata.get("type");
+          logger.debug(`shutdown type: ${shutdownType}`);
           await this.stopTracking("shutdown");
         }
       }
