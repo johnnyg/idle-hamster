@@ -59,11 +59,11 @@ export function forProxySignal<T>(
   signal: string,
   callback: (value: T) => Promise<void>
 ): Connector;
-export function forProxySignal(
+export function forProxySignal<T, U>(
   logger: ConsoleLike,
   proxy: Gio.DBusProxy,
   signal: string,
-  callback: (...params: any[]) => Promise<void>
+  callback: (first: T, second: U) => Promise<void>
 ): Connector;
 export function forProxySignal(
   logger: ConsoleLike,

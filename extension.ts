@@ -47,8 +47,14 @@ type GioDBusProxyNewForBus = (
   cancellable?: Gio.Cancellable | null
 ) => Promise<Gio.DBusProxy>;
 
-type StopTrackingReason = "idleness" | "screen lock" | "suspend" | "shutdown";
+type SessionOverReason = "shutdown" | "reboot" | "logout";
+type StopTrackingReason = "idleness" | "screen lock" | "suspend" | SessionOverReason;
 type StopOnSuspendChoices = "never" | "idle" | "always";
+
+type ShutdownType = "poweroff" | "reboot" | "halt" | "kexec" | "soft-reboot";
+interface PrepareForShutdownMetadata {
+  type: ShutdownType;
+}
 
 function toTimeString(millisec: number): string {
   const sec = millisec / 1000;
@@ -68,6 +74,7 @@ export default class IdleHamsterExtension extends Extension {
   _todaysLastFact?: Hamster.Fact;
   _notificationSource?: MessageTray.Source;
   _notifyOnStop?: boolean;
+  _sessionOverReason?: SessionOverReason;
   _suspendTime?: Date;
 
   async enable(): Promise<void> {
@@ -194,14 +201,6 @@ export default class IdleHamsterExtension extends Extension {
         this._settings,
         "use-session-idle-delay",
         this.updateSessionIdleSync.bind(this)
-      ),
-      Signal.forProxySignal(
-        logger,
-        this._sessionManagerProxy,
-        "SessionOver",
-        async (): Promise<void> => {
-          logger.debug("session over");
-        }
       )
     );
     await this.checkIfTrackingActivity();
@@ -230,6 +229,7 @@ export default class IdleHamsterExtension extends Extension {
     this._hamsterProxy = undefined;
     this._notificationSource = undefined;
     this._notifyOnStop = undefined;
+    this._sessionOverReason = undefined;
     this._suspendTime = undefined;
     logger.debug("disabled");
   }
@@ -415,7 +415,7 @@ export default class IdleHamsterExtension extends Extension {
     if (this._notifyOnStop) {
       const source = this.getNotificationSource();
       let msg: string;
-      // Don't just subsitute `reason` because we want to translate the entire phrase
+      // Don't just substitute `reason` because we want to translate the entire phrase
       switch (reason) {
         case "idleness":
           msg = _`end time was set to ${lastActiveTimeString} due to idleness`;
@@ -428,6 +428,12 @@ export default class IdleHamsterExtension extends Extension {
           break;
         case "shutdown":
           msg = _`end time was set to ${lastActiveTimeString} due to the computer being shutdown`;
+          break;
+        case "reboot":
+          msg = "";
+          break;
+        case "logout":
+          msg = "";
           break;
       }
       const notification = new MessageTray.Notification({
@@ -564,22 +570,50 @@ export default class IdleHamsterExtension extends Extension {
 
   async updateStopOnShutdown(stopOnShutdown: boolean): Promise<void> {
     const logger = this.getLogger();
-    const signal = Signal.forProxySignal(
+    const prepareForShutdownSignal = Signal.forProxySignal(
       logger,
       this._loginManagerProxy!,
       "PrepareForShutdownWithMetadata",
-      async (start: boolean, metadata: Map<string, string>): Promise<void> => {
+      async (start: boolean, metadata: PrepareForShutdownMetadata): Promise<void> => {
         if (start) {
-          const shutdownType = metadata.get("type");
-          logger.debug(`shutdown type: ${shutdownType}`);
-          await this.stopTracking("shutdown");
+          logger.debug(`shutdown type: ${metadata.type}`);
+
+          let sessionOverReason: SessionOverReason;
+          switch (metadata.type) {
+            case "poweroff":
+            case "halt":
+              sessionOverReason = "shutdown";
+              break;
+            case "reboot":
+            case "kexec":
+            case "soft-reboot":
+              sessionOverReason = "reboot";
+              break;
+          }
+          logger.debug(`setting session over season to ${sessionOverReason}`);
+          this._sessionOverReason = sessionOverReason;
         }
       }
     );
+    const sessionOverSignal = Signal.forProxySignal(
+        logger,
+        this._sessionManagerProxy!,
+        "SessionOver",
+        async (): Promise<void> => {
+          const sessionOverReason: SessionOverReason = this._sessionOverReason ?? "logout";
+          this._sessionOverReason = undefined;
+          logger.debug(`session over: reason? ${sessionOverReason}`);
+          const enabled = this._settings!.get_boolean(`stop-on-${sessionOverReason}`);
+          logger.debug(`stop on ${sessionOverReason}? ${enabled}`);
+          if (enabled) {
+            await this.stopTracking(sessionOverReason);
+          }
+        }
+    );
     if (stopOnShutdown) {
-      this.updateTrackingActivityOnlySignals(await this.addSignals(signal));
+      this.updateTrackingActivityOnlySignals(await this.addSignals(prepareForShutdownSignal, sessionOverSignal));
     } else {
-      await this.removeSignals(signal);
+      await this.removeSignals(prepareForShutdownSignal, sessionOverSignal);
     }
   }
 
