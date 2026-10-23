@@ -352,7 +352,19 @@ export default class IdleHamsterExtension extends Extension {
             logger,
             this._settings!,
             "stop-on-shutdown",
-            this.updateStopOnShutdown.bind(this)
+            this.updateStopOnSessionOver.bind(this, "shutdown")
+          ),
+          Signal.forSettingsKeyChange(
+            logger,
+            this._settings!,
+            "stop-on-reboot",
+            this.updateStopOnSessionOver.bind(this, "reboot")
+          ),
+          Signal.forSettingsKeyChange(
+            logger,
+            this._settings!,
+            "stop-on-logout",
+            this.updateStopOnSessionOver.bind(this, "logout")
           ),
           Signal.forSettingsKeyChange(
             logger,
@@ -430,10 +442,10 @@ export default class IdleHamsterExtension extends Extension {
           msg = _`end time was set to ${lastActiveTimeString} due to the computer being shutdown`;
           break;
         case "reboot":
-          msg = "";
+          msg = _`end time was set to ${lastActiveTimeString} due to the computer being restarted`;
           break;
         case "logout":
-          msg = "";
+          msg = _`end time was set to ${lastActiveTimeString} due to the user logging out`;
           break;
       }
       const notification = new MessageTray.Notification({
@@ -568,7 +580,7 @@ export default class IdleHamsterExtension extends Extension {
     }
   }
 
-  async updateStopOnShutdown(stopOnShutdown: boolean): Promise<void> {
+  async updateStopOnSessionOver(stopOnSessionOverReason: SessionOverReason, enabled: boolean): Promise<void> {
     const logger = this.getLogger();
     const prepareForShutdownSignal = Signal.forProxySignal(
       logger,
@@ -577,21 +589,27 @@ export default class IdleHamsterExtension extends Extension {
       async (start: boolean, metadata: PrepareForShutdownMetadata): Promise<void> => {
         if (start) {
           logger.debug(`shutdown type: ${metadata.type}`);
-
+          let processNow = false;
           let sessionOverReason: SessionOverReason;
           switch (metadata.type) {
             case "poweroff":
             case "halt":
               sessionOverReason = "shutdown";
               break;
-            case "reboot":
-            case "kexec":
             case "soft-reboot":
+            case "kexec":
+              // for some reason these types of soft reboots don't emit a SessionOver event
+              // so in order to avoid code duplication let's just manually call the handler now
+              processNow = true;
+            case "reboot":
               sessionOverReason = "reboot";
               break;
           }
           logger.debug(`setting session over season to ${sessionOverReason}`);
           this._sessionOverReason = sessionOverReason;
+          if (processNow) {
+            await this.onSessionOver();
+          }
         }
       }
     );
@@ -599,21 +617,24 @@ export default class IdleHamsterExtension extends Extension {
         logger,
         this._sessionManagerProxy!,
         "SessionOver",
-        async (): Promise<void> => {
-          const sessionOverReason: SessionOverReason = this._sessionOverReason ?? "logout";
-          this._sessionOverReason = undefined;
-          logger.debug(`session over: reason? ${sessionOverReason}`);
-          const enabled = this._settings!.get_boolean(`stop-on-${sessionOverReason}`);
-          logger.debug(`stop on ${sessionOverReason}? ${enabled}`);
-          if (enabled) {
-            await this.stopTracking(sessionOverReason);
-          }
-        }
+        this.onSessionOver.bind(this)
     );
     if (stopOnShutdown) {
       this.updateTrackingActivityOnlySignals(await this.addSignals(prepareForShutdownSignal, sessionOverSignal));
     } else {
       await this.removeSignals(prepareForShutdownSignal, sessionOverSignal);
+    }
+  }
+
+  async onSessionOver(): Promise<void> {
+    const logger = this.getLogger();
+    const sessionOverReason: SessionOverReason = this._sessionOverReason ?? "logout";
+    this._sessionOverReason = undefined;
+    logger.debug(`session over: reason? ${sessionOverReason}`);
+    const enabled = this._settings!.get_boolean(`stop-on-${sessionOverReason}`);
+    logger.debug(`stop on ${sessionOverReason}? ${enabled}`);
+    if (enabled) {
+      await this.stopTracking(sessionOverReason);
     }
   }
 

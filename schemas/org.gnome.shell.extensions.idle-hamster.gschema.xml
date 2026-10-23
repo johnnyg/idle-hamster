@@ -34,10 +34,10 @@
     </key>
     <key name="stop-on-reboot" type="b">
       <default>false</default>
-      <summary>Stop tracking activity when computer is rebooted</summary>
-      <description>Whether to stop tracking an activity when the computer is rebooted</description>
+      <summary>Stop tracking activity when computer is restarted</summary>
+      <description>Whether to stop tracking an activity when the computer is restarted</description>
     </key>
-    <key name="stop-on-log-out" type="b">
+    <key name="stop-on-logout" type="b">
       <default>false</default>
       <summary>Stop tracking activity when user logs out</summary>
       <description>Whether to stop tracking an activity when the user logs out</description>
