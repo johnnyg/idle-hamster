@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-29 21:53+1100\n"
+"POT-Creation-Date: 2026-10-29 22:40+1100\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -17,51 +17,59 @@ msgstr ""
 "Content-Type: text/plain; charset=CHARSET\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: extension.js:63
+#: extension.js:67
 msgid "Idle hamster error"
 msgstr ""
 
-#: extension.js:64
+#: extension.js:68
 msgid "Couldn't enable extension; please install hamster"
 msgstr ""
 
-#: extension.js:69
+#: extension.js:73
 msgid "Open hamster website"
 msgstr ""
 
-#: extension.js:73
+#: extension.js:77
 msgid "Unable to detect hamster, please make sure it is installed"
 msgstr ""
 
-#: extension.js:117
+#: extension.js:125
 msgid "Idle Hamster"
 msgstr ""
 
-#: extension.js:226
+#: extension.js:235
 msgid "end time was set to {0} due to idleness"
 msgstr ""
 
-#: extension.js:229
+#: extension.js:238
 msgid "end time was set to {0} due to the screen being locked"
 msgstr ""
 
-#: extension.js:232
+#: extension.js:241
 msgid "end time was set to {0} due to the computer being suspended"
 msgstr ""
 
-#: extension.js:235
+#: extension.js:244
 msgid "end time was set to {0} due to the computer being shutdown"
 msgstr ""
 
-#: extension.js:240
+#: extension.js:247
+msgid "end time was set to {0} due to the computer being restarted"
+msgstr ""
+
+#: extension.js:250
+msgid "end time was set to {0} due to the user logging out"
+msgstr ""
+
+#: extension.js:255
 msgid "Stopped tracking activity '{0}'"
 msgstr ""
 
-#: extension.js:246
+#: extension.js:261
 msgid "open hamster overview"
 msgstr ""
 
-#: extension.js:249
+#: extension.js:264
 msgid "open preferences"
 msgstr ""
 
@@ -138,17 +146,33 @@ msgid "Stop tracking when computer is shutdown"
 msgstr ""
 
 #: prefs.js:124
-msgid "Notifications"
+msgid "Stop tracking activity on restart"
 msgstr ""
 
 #: prefs.js:125
-msgid "Configure which notifications to show"
+msgid "Stop tracking when computer is restarted"
 msgstr ""
 
 #: prefs.js:129
-msgid "Notify when stop tracking an activity"
+msgid "Stop tracking activity on log out"
 msgstr ""
 
 #: prefs.js:130
+msgid "Stop tracking when user logs out"
+msgstr ""
+
+#: prefs.js:134
+msgid "Notifications"
+msgstr ""
+
+#: prefs.js:135
+msgid "Configure which notifications to show"
+msgstr ""
+
+#: prefs.js:139
+msgid "Notify when stop tracking an activity"
+msgstr ""
+
+#: prefs.js:140
 msgid "Show a notification when we stop tracking activity"
 msgstr ""
