@@ -1,6 +1,6 @@
 // Wraps `gettext` to add support for template strings
 export function templateTagWrapper(
-  gettext: (msg: string) => string
+  gettext: (msg: string) => string,
 ): (
   stringsArrayOrStrings: TemplateStringsArray | string,
   ...exprs: any[]

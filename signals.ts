@@ -17,7 +17,7 @@ export function forSettingsKeyChange<T>(
   logger: ConsoleLike,
   settings: Gio.Settings,
   key: string,
-  callback: (value: T) => Promise<void>
+  callback: (value: T) => Promise<void>,
 ): Connector {
   return {
     id: `${settings.schemaId}.${key}::changed`,
@@ -28,10 +28,10 @@ export function forSettingsKeyChange<T>(
           const value: T = settings.get_value(key).recursiveUnpack();
           logger.info(`changed ${settings.schema_id}.${key}=${value}`);
           await callback(value);
-        }
+        },
       );
       logger.debug(
-        `connected to changes of ${settings.schemaId}.${key} with handler ID ${handlerId}`
+        `connected to changes of ${settings.schemaId}.${key} with handler ID ${handlerId}`,
       );
       // Need to always access a key after connecting for changes
       await callback(settings!.get_value(key).recursiveUnpack());
@@ -39,7 +39,7 @@ export function forSettingsKeyChange<T>(
         async disconnect(): Promise<void> {
           settings.disconnect(handlerId);
           logger.debug(
-            `disconnected from changes to ${settings.schemaId}.${key} with handler ID ${handlerId}`
+            `disconnected from changes to ${settings.schemaId}.${key} with handler ID ${handlerId}`,
           );
         },
       };
@@ -51,19 +51,19 @@ export function forProxySignal(
   logger: ConsoleLike,
   proxy: Gio.DBusProxy,
   signal: string,
-  callback: () => Promise<void>
+  callback: () => Promise<void>,
 ): Connector;
 export function forProxySignal<T>(
   logger: ConsoleLike,
   proxy: Gio.DBusProxy,
   signal: string,
-  callback: (value: T) => Promise<void>
+  callback: (value: T) => Promise<void>,
 ): Connector;
 export function forProxySignal<T>(
   logger: ConsoleLike,
   proxy: Gio.DBusProxy,
   signal: string,
-  callback: (...params: T[]) => Promise<void>
+  callback: (...params: T[]) => Promise<void>,
 ): Connector {
   return {
     id: `${proxy.get_object_path()}/g-signal::${signal}`,
@@ -74,26 +74,26 @@ export function forProxySignal<T>(
           source: Gio.DBusProxy,
           _senderName: string | null,
           signalName: string,
-          parameters: GLib.Variant
+          parameters: GLib.Variant,
         ) => {
           logger.info(
             `received signal ${signalName}=${parameters.print(
-              true
-            )} from ${source.get_interface_name()}`
+              true,
+            )} from ${source.get_interface_name()}`,
           );
           const params: Parameters<typeof callback> =
             parameters.recursiveUnpack();
           await callback(...params);
-        }
+        },
       );
       logger.debug(
-        `connected to signal '${signal}' of ${proxy.get_interface_name()} with handler ID ${handlerId}`
+        `connected to signal '${signal}' of ${proxy.get_interface_name()} with handler ID ${handlerId}`,
       );
       return {
         async disconnect(): Promise<void> {
           proxy.disconnect(handlerId);
           logger.debug(
-            `disconnected from signal '${signal}' of ${proxy.get_interface_name()} with handler ID ${handlerId}`
+            `disconnected from signal '${signal}' of ${proxy.get_interface_name()} with handler ID ${handlerId}`,
           );
         },
       };
@@ -106,7 +106,7 @@ export function forProxyCall(
   proxy: Gio.DBusProxy,
   subscribe: string,
   unsubscribe: string,
-  args: GLib.Variant
+  args: GLib.Variant,
 ): Connector {
   const interfaceName = proxy.get_interface_name();
   return {
@@ -117,11 +117,11 @@ export function forProxyCall(
         args,
         Gio.DBusCallFlags.NONE,
         -1,
-        null
+        null,
       );
       const handlerIdStr = handlerId.print(false);
       logger.debug(
-        `${interfaceName}.${subscribe}(${args.print(false)}) -> ${handlerIdStr}`
+        `${interfaceName}.${subscribe}(${args.print(false)}) -> ${handlerIdStr}`,
       );
       return {
         async disconnect(): Promise<void> {
@@ -130,7 +130,7 @@ export function forProxyCall(
             handlerId,
             Gio.DBusCallFlags.NONE,
             -1,
-            null
+            null,
           );
           logger.debug(`${interfaceName}.${unsubscribe}(${handlerIdStr})`);
         },

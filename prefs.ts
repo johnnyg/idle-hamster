@@ -20,8 +20,8 @@ function bind_with_mapping<T extends GObject.Object, K extends keyof T>(
   get_mapping?: (variant: GLib.Variant) => T[K] | null,
   set_mapping?: (
     value: T[K],
-    variantType: GLib.VariantType
-  ) => GLib.Variant | null
+    variantType: GLib.VariantType,
+  ) => GLib.Variant | null,
 ) {
   flags = flags ?? Gio.SettingsBindFlags.DEFAULT;
   if (flags == Gio.SettingsBindFlags.DEFAULT) {
@@ -57,7 +57,7 @@ function bind_with_mapping<T extends GObject.Object, K extends keyof T>(
         object[property] = newProperty;
         return true;
       },
-      null
+      null,
     );
   }
 
@@ -74,7 +74,7 @@ function bind_with_mapping<T extends GObject.Object, K extends keyof T>(
           return null;
         }
         return set_mapping(value, variantType);
-      }
+      },
     );
   }
 }
@@ -85,7 +85,7 @@ export default class IdleHamsterPreferences extends ExtensionPreferences {
     const sessionSettings = this.getSettings("org.gnome.desktop.session");
     const [stopOnSuspendRangeType, stopOnSuspendRangeValues]: [
       string,
-      string[]
+      string[],
     ] = settings.settingsSchema
       .get_key("stop-on-suspend")
       .get_range()
@@ -98,7 +98,7 @@ export default class IdleHamsterPreferences extends ExtensionPreferences {
       stopOnSuspendIndexToEnum.map((choice: string, index: number) => [
         choice,
         index,
-      ])
+      ]),
     );
     const stopOnSuspendEnumToLabel = new Map([
       ["never", _("Never")],
@@ -107,7 +107,7 @@ export default class IdleHamsterPreferences extends ExtensionPreferences {
     ]);
     if (
       !stopOnSuspendIndexToEnum.every((value: string) =>
-        stopOnSuspendEnumToLabel.has(value)
+        stopOnSuspendEnumToLabel.has(value),
       )
     ) {
       throw `Mismatch between settings ${stopOnSuspendIndexToEnum} and prefs ${stopOnSuspendEnumToLabel.keys()}`;
@@ -145,7 +145,7 @@ export default class IdleHamsterPreferences extends ExtensionPreferences {
     const otherStopEventsGroup = new Adw.PreferencesGroup({
       title: _("Other stop events"),
       description: _(
-        "Configure whether we stop tracking based on other events"
+        "Configure whether we stop tracking based on other events",
       ),
     });
     page.add(otherStopEventsGroup);
@@ -161,7 +161,7 @@ export default class IdleHamsterPreferences extends ExtensionPreferences {
       subtitle: _("Stop tracking when computer is suspended"),
       model: new Gtk.StringList({
         strings: stopOnSuspendIndexToEnum.map(
-          (choice: string) => stopOnSuspendEnumToLabel!.get(choice)!
+          (choice: string) => stopOnSuspendEnumToLabel!.get(choice)!,
         ),
       }),
     });
@@ -191,14 +191,14 @@ export default class IdleHamsterPreferences extends ExtensionPreferences {
       "sensitive",
       GObject.BindingFlags.DEFAULT |
         GObject.BindingFlags.INVERT_BOOLEAN |
-        GObject.BindingFlags.SYNC_CREATE
+        GObject.BindingFlags.SYNC_CREATE,
     );
 
     settings.bind(
       "use-session-idle-delay",
       useSessionIdleDelay,
       "active",
-      Gio.SettingsBindFlags.DEFAULT
+      Gio.SettingsBindFlags.DEFAULT,
     );
 
     bind_with_mapping(
@@ -211,7 +211,7 @@ export default class IdleHamsterPreferences extends ExtensionPreferences {
       (variant: GLib.Variant): number | null =>
         Math.floor(variant.get_uint16() / 60),
       (value: number, _: GLib.VariantType): GLib.Variant =>
-        GLib.Variant.new_uint16(value * 60)
+        GLib.Variant.new_uint16(value * 60),
     );
 
     bind_with_mapping(
@@ -221,14 +221,14 @@ export default class IdleHamsterPreferences extends ExtensionPreferences {
       "sensitive",
       Adw.SwitchRow,
       Gio.SettingsBindFlags.GET,
-      (variant: GLib.Variant): boolean | null => variant.get_uint32() > 0
+      (variant: GLib.Variant): boolean | null => variant.get_uint32() > 0,
     );
 
     settings.bind(
       "stop-on-lock",
       stopOnLock,
       "active",
-      Gio.SettingsBindFlags.DEFAULT
+      Gio.SettingsBindFlags.DEFAULT,
     );
 
     const logger = this.getLogger();
@@ -250,37 +250,37 @@ export default class IdleHamsterPreferences extends ExtensionPreferences {
         const choice = GLib.Variant.new_string(stopOnSuspendIndexToEnum[index]);
         logger.log(`${index} -> ${choice.print(true)}`);
         return choice;
-      }
+      },
     );
     settings.bind(
       "stop-on-shutdown",
       stopOnShutdown,
       "active",
-      Gio.SettingsBindFlags.DEFAULT
+      Gio.SettingsBindFlags.DEFAULT,
     );
 
     settings.bind(
       "stop-on-shutdown",
       stopOnShutdown,
       "active",
-      Gio.SettingsBindFlags.DEFAULT
+      Gio.SettingsBindFlags.DEFAULT,
     );
 
     settings.bind(
       "notify-on-stop",
       notifyOnStop,
       "active",
-      Gio.SettingsBindFlags.DEFAULT
+      Gio.SettingsBindFlags.DEFAULT,
     );
 
     useSessionIdleDelay.set_property(
       "active",
-      settings.get_boolean("use-session-idle-delay")
+      settings.get_boolean("use-session-idle-delay"),
     );
 
     idleDelay.set_property(
       "sensitive",
-      !settings.get_boolean("use-session-idle-delay")
+      !settings.get_boolean("use-session-idle-delay"),
     );
   }
 }

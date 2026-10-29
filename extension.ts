@@ -44,7 +44,7 @@ type GioDBusProxyNewForBus = (
   name: string,
   object_path: string,
   interface_name: string,
-  cancellable?: Gio.Cancellable | null
+  cancellable?: Gio.Cancellable | null,
 ) => Promise<Gio.DBusProxy>;
 
 type StopTrackingReason = "idleness" | "screen lock" | "suspend" | "shutdown";
@@ -81,7 +81,7 @@ export default class IdleHamsterExtension extends Extension {
       "org.gnome.Hamster",
       "/org/gnome/Hamster",
       "org.gnome.Hamster",
-      null
+      null,
     );
     let hamsterVersion: string | undefined = undefined;
     try {
@@ -91,7 +91,7 @@ export default class IdleHamsterExtension extends Extension {
           null,
           Gio.DBusCallFlags.NONE,
           -1,
-          null
+          null,
         )
       ).recursiveUnpack();
     } catch (err) {
@@ -111,7 +111,7 @@ export default class IdleHamsterExtension extends Extension {
         notification.addAction(_("Open hamster website"), (): void => {
           Gio.AppInfo.launch_default_for_uri(
             "https://github.com/projecthamster/hamster",
-            null
+            null,
           );
         });
         source.addNotification(notification);
@@ -119,7 +119,7 @@ export default class IdleHamsterExtension extends Extension {
           _("Unable to detect hamster, please make sure it is installed"),
           {
             cause: err,
-          }
+          },
         );
       }
       throw err;
@@ -134,7 +134,7 @@ export default class IdleHamsterExtension extends Extension {
       "org.gnome.Hamster.GUI",
       "/org/gnome/Hamster/GUI",
       "org.gtk.Actions",
-      null
+      null,
     );
     this._idleMonitorProxy = await (
       Gio.DBusProxy.new_for_bus as GioDBusProxyNewForBus
@@ -145,7 +145,7 @@ export default class IdleHamsterExtension extends Extension {
       "org.gnome.Mutter.IdleMonitor",
       "/org/gnome/Mutter/IdleMonitor/Core",
       "org.gnome.Mutter.IdleMonitor",
-      null
+      null,
     );
     this._screensaverProxy = await (
       Gio.DBusProxy.new_for_bus as GioDBusProxyNewForBus
@@ -156,7 +156,7 @@ export default class IdleHamsterExtension extends Extension {
       "org.gnome.ScreenSaver",
       "/org/gnome/ScreenSaver",
       "org.gnome.ScreenSaver",
-      null
+      null,
     );
     this._loginManagerProxy = await (
       Gio.DBusProxy.new_for_bus as GioDBusProxyNewForBus
@@ -167,7 +167,7 @@ export default class IdleHamsterExtension extends Extension {
       "org.freedesktop.login1",
       "/org/freedesktop/login1",
       "org.freedesktop.login1.Manager",
-      null
+      null,
     );
     this._settings = this.getSettings();
     await this.addSignals(
@@ -175,14 +175,14 @@ export default class IdleHamsterExtension extends Extension {
         logger,
         this._hamsterProxy,
         "FactsChanged",
-        this.checkIfTrackingActivity.bind(this)
+        this.checkIfTrackingActivity.bind(this),
       ),
       Signal.forSettingsKeyChange(
         logger,
         this._settings,
         "use-session-idle-delay",
-        this.updateSessionIdleSync.bind(this)
-      )
+        this.updateSessionIdleSync.bind(this),
+      ),
     );
     await this.checkIfTrackingActivity();
   }
@@ -277,7 +277,7 @@ export default class IdleHamsterExtension extends Extension {
           null,
           Gio.DBusCallFlags.NONE,
           -1,
-          null
+          null,
         )
       ).recursiveUnpack();
       const lastFactJSON = factsJSON?.at(-1);
@@ -307,39 +307,39 @@ export default class IdleHamsterExtension extends Extension {
             logger,
             this._idleMonitorProxy!,
             "WatchFired",
-            this.stopTracking.bind(this, "idleness", undefined)
+            this.stopTracking.bind(this, "idleness", undefined),
           ),
           Signal.forSettingsKeyChange(
             logger,
             this._settings!,
             "idle-delay",
-            this.updateIdleWatchSignal.bind(this)
+            this.updateIdleWatchSignal.bind(this),
           ),
           Signal.forSettingsKeyChange(
             logger,
             this._settings!,
             "stop-on-lock",
-            this.updateStopOnLock.bind(this)
+            this.updateStopOnLock.bind(this),
           ),
           Signal.forSettingsKeyChange(
             logger,
             this._settings!,
             "stop-on-suspend",
-            this.updateStopOnSuspend.bind(this)
+            this.updateStopOnSuspend.bind(this),
           ),
           Signal.forSettingsKeyChange(
             logger,
             this._settings!,
             "stop-on-shutdown",
-            this.updateStopOnShutdown.bind(this)
+            this.updateStopOnShutdown.bind(this),
           ),
           Signal.forSettingsKeyChange(
             logger,
             this._settings!,
             "notify-on-stop",
-            this.updateNotifyOnStop.bind(this)
-          )
-        )
+            this.updateNotifyOnStop.bind(this),
+          ),
+        ),
       );
     } else if (wasTracking && !isTracking) {
       await this.removeTrackingActivityOnlySignals();
@@ -348,7 +348,7 @@ export default class IdleHamsterExtension extends Extension {
 
   async stopTracking(
     reason: StopTrackingReason,
-    lastActiveTime?: Date
+    lastActiveTime?: Date,
   ): Promise<void> {
     const logger = this.getLogger();
     let idleTime: number;
@@ -359,7 +359,7 @@ export default class IdleHamsterExtension extends Extension {
           null,
           Gio.DBusCallFlags.NONE,
           -1,
-          null
+          null,
         )
       ).recursiveUnpack() as [number];
       lastActiveTime = new Date(Date.now() - idleTime);
@@ -369,7 +369,7 @@ export default class IdleHamsterExtension extends Extension {
     const lastActiveTimeMillis = lastActiveTime.getTime();
     const lastActiveTimeSecs = Math.floor(lastActiveTimeMillis / 1000);
     const lastActiveTimeString = new Date(
-      lastActiveTimeMillis
+      lastActiveTimeMillis,
     ).toLocaleTimeString();
     const activity = this._todaysLastFact!.activity;
     let stopMsg = `stopping hamster activity tracking of '${activity}' due to ${reason}`;
@@ -386,7 +386,7 @@ export default class IdleHamsterExtension extends Extension {
         new GLib.Variant("(i)", [endTime]),
         Gio.DBusCallFlags.NONE,
         -1,
-        null
+        null,
       );
     } catch (e) {
       logger.error(`failed to stop tracking hamster activity: ${e}`);
@@ -425,13 +425,13 @@ export default class IdleHamsterExtension extends Extension {
             new GLib.Variant("(sava{sv})", ["overview", [], {}]),
             Gio.DBusCallFlags.NONE,
             -1,
-            null
+            null,
           );
-        }
+        },
       );
       notification.addAction(
         _("open preferences"),
-        this.openPreferences.bind(this)
+        this.openPreferences.bind(this),
       );
       source.addNotification(notification);
     }
@@ -443,12 +443,12 @@ export default class IdleHamsterExtension extends Extension {
       // so disable the sync ourselves
       this._settings!.set_value(
         "use-session-idle-delay",
-        GLib.Variant.new_boolean(false)
+        GLib.Variant.new_boolean(false),
       );
     } else {
       this._settings!.set_value(
         "idle-delay",
-        GLib.Variant.new_uint16(idleDelaySec + IDLE_DELAY_OFFSET_SEC)
+        GLib.Variant.new_uint16(idleDelaySec + IDLE_DELAY_OFFSET_SEC),
       );
     }
   }
@@ -458,7 +458,7 @@ export default class IdleHamsterExtension extends Extension {
       this.getLogger(),
       this.getSettings("org.gnome.desktop.session"),
       "idle-delay",
-      this.updateSessionIdleDelay.bind(this)
+      this.updateSessionIdleDelay.bind(this),
     );
     if (useSessionIdleDelay) {
       await this.addSignals(signal);
@@ -475,9 +475,9 @@ export default class IdleHamsterExtension extends Extension {
           this._idleMonitorProxy!,
           "AddIdleWatch",
           "RemoveWatch",
-          new GLib.Variant("(t)", [idleTimeSec * 1000])
-        )
-      )
+          new GLib.Variant("(t)", [idleTimeSec * 1000]),
+        ),
+      ),
     );
   }
 
@@ -490,7 +490,7 @@ export default class IdleHamsterExtension extends Extension {
         if (active) {
           await this.stopTracking("screen lock");
         }
-      }
+      },
     );
     if (stopOnLock) {
       this.updateTrackingActivityOnlySignals(await this.addSignals(signal));
@@ -500,7 +500,7 @@ export default class IdleHamsterExtension extends Extension {
   }
 
   async updateStopOnSuspend(
-    stopOnSuspend: StopOnSuspendChoices
+    stopOnSuspend: StopOnSuspendChoices,
   ): Promise<void> {
     const logger = this.getLogger();
     const signal = Signal.forProxySignal(
@@ -520,7 +520,7 @@ export default class IdleHamsterExtension extends Extension {
             if (this._suspendTime) {
               const suspendDuration = Date.now() - this._suspendTime.getTime();
               logger.debug(
-                `was suspended for ${toTimeString(suspendDuration)}`
+                `was suspended for ${toTimeString(suspendDuration)}`,
               );
               const idleDuration =
                 this._settings!.get_value("idle-delay").recursiveUnpack() *
@@ -532,7 +532,7 @@ export default class IdleHamsterExtension extends Extension {
             }
           }
         }
-      }
+      },
     );
     if (stopOnSuspend != "never") {
       this.updateTrackingActivityOnlySignals(await this.addSignals(signal));
@@ -550,7 +550,7 @@ export default class IdleHamsterExtension extends Extension {
         if (start) {
           await this.stopTracking("shutdown");
         }
-      }
+      },
     );
     if (stopOnShutdown) {
       this.updateTrackingActivityOnlySignals(await this.addSignals(signal));
@@ -562,7 +562,7 @@ export default class IdleHamsterExtension extends Extension {
   async updateNotifyOnStop(notifyOnStop: boolean): Promise<void> {
     const logger = this.getLogger();
     logger.debug(
-      `show notifications on stopping activity tracking? ${notifyOnStop}`
+      `show notifications on stopping activity tracking? ${notifyOnStop}`,
     );
     this._notifyOnStop = notifyOnStop;
   }
