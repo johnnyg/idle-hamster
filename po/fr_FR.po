@@ -8,63 +8,74 @@ msgid ""
 msgstr ""
 "Project-Id-Version: \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-14 22:25+1100\n"
-"PO-Revision-Date: 2026-10-14 22:33+1100\n"
+"POT-Creation-Date: 2026-11-01 22:28+1100\n"
+"PO-Revision-Date: 2026-11-01 22:29+1100\n"
 "Last-Translator: \n"
 "Language-Team: \n"
 "Language: fr_FR\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"X-Generator: Poedit 3.9\n"
+"X-Generator: Poedit 3.10\n"
 
-#: extension.js:63
+#: extension.js:66
 msgid "Idle hamster error"
 msgstr "Erreur avec \"Hamster au repos\""
 
-#: extension.js:64
+#: extension.js:67
 msgid "Couldn't enable extension; please install hamster"
 msgstr "Pouvais pas activer, installer hamster s'il vous plaît"
 
-#: extension.js:69
+#: extension.js:72
 msgid "Open hamster website"
 msgstr "Ouvrez le site web de hamster"
 
-#: extension.js:73
+#: extension.js:76
 msgid "Unable to detect hamster, please make sure it is installed"
 msgstr "Pouvez pas détecter hamster, veuillez vous assurez qu'il est installé"
 
-#: extension.js:115
+#: extension.js:124
 msgid "Idle Hamster"
 msgstr "Hamster au repos"
 
-#: extension.js:224
+#: extension.js:234
 msgid "end time was set to {0} due to idleness"
 msgstr "l'heure de fin a été réglez à {0} en raison d'être inactif"
 
-#: extension.js:227
+#: extension.js:237
 msgid "end time was set to {0} due to the screen being locked"
 msgstr "l'heure de fin a été réglez à {0} en raison du verrouillage de l'écran"
 
-#: extension.js:230
+#: extension.js:240
 msgid "end time was set to {0} due to the computer being suspended"
 msgstr ""
 "l'heure de fin a été réglez à {0} en raison de la mise en veille de "
 "l'ordinateur"
 
-#: extension.js:233
+#: extension.js:243
 msgid "end time was set to {0} due to the computer being shutdown"
 msgstr "l'heure de fin a été réglez à {0} en raison de l'arrêt de l'ordinateur"
 
-#: extension.js:238
+#: extension.js:246
+msgid "end time was set to {0} due to the computer being restarted"
+msgstr ""
+"l'heure de fin a été réglez à {0} en raison de le redémarrage de l'ordinateur"
+
+#: extension.js:249
+msgid "end time was set to {0} due to the user logging out"
+msgstr ""
+"l'heure de fin a été réglez à {0} en raison de la déconnexion de "
+"l’utilisateur"
+
+#: extension.js:254
 msgid "Stopped tracking activity '{0}'"
 msgstr "Arrêté de suivre l'activité '{0}'"
 
-#: extension.js:244
+#: extension.js:260
 msgid "open hamster overview"
 msgstr "afficher le résumé de hamster"
 
-#: extension.js:247
+#: extension.js:263
 msgid "open preferences"
 msgstr "ouvrez les préférences"
 
@@ -143,18 +154,34 @@ msgid "Stop tracking when computer is shutdown"
 msgstr "Arrêtez de suivre l'activité lorsque l'ordinateur est éteint"
 
 #: prefs.js:124
+msgid "Stop tracking activity on restart"
+msgstr "Arrêtez de suivre l'activité lorsque l'ordinateur est redémarré"
+
+#: prefs.js:125
+msgid "Stop tracking when computer is restarted"
+msgstr "Arrêtez de suivre l'activité lorsque l'ordinateur est redémarré"
+
+#: prefs.js:129
+msgid "Stop tracking activity on log out"
+msgstr "Arrêtez de suivre l'activité lors de la déconnexion de l’utilisateur"
+
+#: prefs.js:130
+msgid "Stop tracking when user logs out"
+msgstr "Arrêtez de suivre l'activité lors de la déconnexion de l’utilisateur"
+
+#: prefs.js:134
 msgid "Notifications"
 msgstr "Notifications"
 
-#: prefs.js:125
+#: prefs.js:135
 msgid "Configure which notifications to show"
 msgstr "Configurez les notifications à afficher"
 
-#: prefs.js:129
+#: prefs.js:139
 msgid "Notify when stop tracking an activity"
 msgstr "Notifier lorsque nous arrêtons de suivre une activité"
 
-#: prefs.js:130
+#: prefs.js:140
 msgid "Show a notification when we stop tracking activity"
 msgstr "Afficher une notification lorsque nous arrêtons de suivre une activité"
 
